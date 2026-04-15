@@ -3,3 +3,5 @@ pandas
 matplotlib
 qrcode
 psycopg2-binary
+reportlab
+pillow
