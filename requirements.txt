@@ -1,7 +1,8 @@
 streamlit
 pandas
 matplotlib
-qrcode
-psycopg2-binary
 reportlab
+qrcode
 pillow
+psycopg2-binary
+plotly
