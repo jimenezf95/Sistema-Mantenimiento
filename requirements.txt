@@ -2,3 +2,4 @@ streamlit
 pandas
 matplotlib
 qrcode
+psycopg2-binary

@@ -1,0 +1,15 @@
+
+# CAMBIAR LA URL DEPENDIENDO DE LA RED 
+
+# Claro-3899 
+#BASE_URL = "http://192.168.1.14:8501"
+
+# ACA BOGOTA
+BASE_URL = "http://192.168.1.17:8501"
+
+# CASA
+# BASE_URL = "http://192.168.1.10:8501" 
+
+
+
+#http://192.168.1.14:8501/?maquina_id=2

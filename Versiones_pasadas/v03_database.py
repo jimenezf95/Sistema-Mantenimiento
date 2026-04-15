@@ -1,20 +1,9 @@
-import psycopg2
-import streamlit as st
+import sqlite3
 
-    
 def conectar():
-    return psycopg2.connect(st.secrets["DATABASE_URL"])
+    conn = sqlite3.connect("mantenimiento.db", timeout=30)
+    return conn
 
-import unicodedata
-import re
-
-import hashlib
-
-def normalizar_item(texto):
-    texto = texto.lower()
-    texto = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('utf-8')
-    texto = re.sub(r'\s+', ' ', texto).strip()
-    return texto
 
 def crear_tablas():
 
@@ -26,7 +15,7 @@ def crear_tablas():
     # ======================
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS sedes (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT,
         ciudad TEXT
     )
@@ -37,7 +26,7 @@ def crear_tablas():
     # ======================
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS tipos_maquina (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT UNIQUE
     )
     """)
@@ -47,7 +36,7 @@ def crear_tablas():
     # ======================
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS maquinas (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         tipo TEXT,
         activo_fijo TEXT UNIQUE,
         numero_equipo TEXT,
@@ -56,18 +45,18 @@ def crear_tablas():
         anio INTEGER,
         estado_operacion TEXT,
         sede_id INTEGER,
-        fecha_registro DATE DEFAULT CURRENT_DATE,
+        fecha_registro TEXT DEFAULT CURRENT_DATE,
         FOREIGN KEY (sede_id) REFERENCES sedes(id)
     )
     """)
     
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS traslados (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         maquina_id INTEGER,
         sede_origen INTEGER,
         sede_destino INTEGER,
-        fecha DATE,
+        fecha TEXT,
         responsable TEXT,
         observaciones TEXT,
         FOREIGN KEY (maquina_id) REFERENCES maquinas(id),
@@ -81,23 +70,16 @@ def crear_tablas():
     # ======================
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS checklists (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         maquina_id INTEGER,
-        fecha DATE,
-        origen TEXT,
+        fecha TEXT,
         FOREIGN KEY (maquina_id) REFERENCES maquinas(id)
     )
     """)
-    
-    # 🔥 Agregar columna origen si no existe
-    #try:
-        #cursor.execute("ALTER TABLE checklists ADD COLUMN origen TEXT")
-    #except:
-        #pass    
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS checklist_items (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         checklist_id INTEGER,
         item TEXT,
         cumple INTEGER,
@@ -111,9 +93,9 @@ def crear_tablas():
     # ======================
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS solicitudes_mantenimiento (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         maquina_id INTEGER,
-        fecha DATE,
+        fecha TEXT,
         item_falla TEXT,
         descripcion_falla TEXT,
         origen TEXT,
@@ -129,9 +111,9 @@ def crear_tablas():
     # ======================
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS mantenimientos (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         maquina_id INTEGER,
-        fecha DATE,
+        fecha TEXT,
         tipo TEXT,
         tecnico TEXT,
         recibido_por TEXT,
@@ -146,7 +128,7 @@ def crear_tablas():
     # ======================
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS costos_mantenimiento (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         mantenimiento_id INTEGER,
         tipo_costo TEXT,
         descripcion TEXT,
@@ -162,7 +144,7 @@ def crear_tablas():
     # ======================
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS mantenimiento_solicitudes (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         mantenimiento_id INTEGER,
         solicitud_id INTEGER,
         FOREIGN KEY (mantenimiento_id) REFERENCES mantenimientos(id),
@@ -171,106 +153,7 @@ def crear_tablas():
     """)
 
     conn.commit()
-    conn.close() 
-    
-    
-#---------------------
-#USUARIOS
-def crear_tabla_usuarios():
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id SERIAL PRIMARY KEY,
-        usuario TEXT UNIQUE,
-        password TEXT,
-        rol TEXT
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-    
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
-  
-def crear_usuario(usuario, password, rol):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    password_hash = hash_password(password)
-
-    cursor.execute("""
-    INSERT INTO usuarios (usuario, password, rol)
-    VALUES (%s, %s, %s)
-    """, (usuario, password_hash, rol))
-
-    conn.commit()
-    conn.close()  
-  
-def validar_usuario(usuario, password):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    password_hash = hash_password(password)
-
-    cursor.execute("""
-    SELECT rol FROM usuarios
-    WHERE usuario = %s AND password = %s
-    """, (usuario, password_hash))
-
-    resultado = cursor.fetchone()
-
-    conn.close()
-
-    return resultado[0] if resultado else None  
-  
-def obtener_usuarios():
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT id, usuario, rol FROM usuarios")
-
-    datos = cursor.fetchall()
-    conn.close()
-
-    return datos  
-  
-def eliminar_usuario(usuario_id):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("DELETE FROM usuarios WHERE id = %s", (usuario_id,))
-
-    conn.commit()
-    conn.close()
-    
-def actualizar_usuario(usuario_id, nuevo_password=None, nuevo_rol=None):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    if nuevo_password:
-        password_hash = hash_password(nuevo_password)
-        cursor.execute("""
-        UPDATE usuarios SET password = %s WHERE id = %s
-        """, (password_hash, usuario_id))
-
-    if nuevo_rol:
-        cursor.execute("""
-        UPDATE usuarios SET rol = %s WHERE id = %s
-        """, (nuevo_rol, usuario_id))
-
-    conn.commit()
-    conn.close()  
-
-
+    conn.close()   
 
 #---------------------
 #MAQUINAS
@@ -285,11 +168,10 @@ def insertar_maquina(tipo, activo_fijo, numero_equipo, modelo, fabricante, estad
     cursor.execute("""
     INSERT INTO maquinas 
     (tipo, activo_fijo, numero_equipo, modelo, fabricante, estado_operacion, sede_id)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
-    RETURNING id
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (tipo, activo_fijo, numero_equipo, modelo, fabricante, estado_operacion, sede_id))
 
-    maquina_id = cursor.fetchone()[0]
+    maquina_id = cursor.lastrowid  
 
     conn.commit()
     conn.close()
@@ -340,7 +222,7 @@ def obtener_maquina_por_id(maquina_id):
         sedes.ciudad
     FROM maquinas
     LEFT JOIN sedes ON maquinas.sede_id = sedes.id
-    WHERE maquinas.id = %s
+    WHERE maquinas.id = ?
     """, (maquina_id,))
 
     maquina = cursor.fetchone()
@@ -354,7 +236,7 @@ def eliminar_maquina(id_maquina):
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM maquinas WHERE id = %s", (id_maquina,))
+    cursor.execute("DELETE FROM maquinas WHERE id = ?", (id_maquina,))
 
     conn.commit()
     conn.close()
@@ -368,8 +250,8 @@ def actualizar_maquina(id, tipo, activo_fijo, numero_equipo, modelo, fabricante,
 
     cursor.execute("""
     UPDATE maquinas
-    SET tipo = %s, activo_fijo = %s, numero_equipo = %s, modelo = %s, fabricante = %s, estado_operacion = %s, sede_id = %s
-    WHERE id = %s
+    SET tipo = ?, activo_fijo = ?, numero_equipo = ?, modelo = ?, fabricante = ?, estado_operacion = ?, sede_id = ?
+    WHERE id = ?
     """, (tipo, activo_fijo, numero_equipo, modelo, fabricante, estado_operacion, sede_id, id))
 
     conn.commit()
@@ -410,7 +292,7 @@ def insertar_sede(nombre, ciudad):
 
     cursor.execute("""
     INSERT INTO sedes (nombre, ciudad)
-    VALUES (%s, %s)
+    VALUES (?, ?)
     """, (nombre, ciudad))
 
     conn.commit()
@@ -436,7 +318,7 @@ def sede_tiene_maquinas(sede_id):
 
     cursor.execute("""
     SELECT COUNT(*) FROM maquinas
-    WHERE sede_id = %s
+    WHERE sede_id = ?
     """, (sede_id,))
 
     cantidad = cursor.fetchone()[0]
@@ -450,7 +332,7 @@ def eliminar_sede(id):
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM sedes WHERE id = %s", (id,))
+    cursor.execute("DELETE FROM sedes WHERE id = ?", (id,))
 
     conn.commit()
     conn.close()
@@ -464,14 +346,14 @@ def insertar_traslado(maquina_id, sede_origen, sede_destino, fecha, responsable,
 
     cursor.execute("""
     INSERT INTO traslados (maquina_id, sede_origen, sede_destino, fecha, responsable, observaciones)
-    VALUES (%s, %s, %s, %s, %s, %s)
+    VALUES (?, ?, ?, ?, ?, ?)
     """, (maquina_id, sede_origen, sede_destino, fecha, responsable, observaciones))
 
     # actualizar sede actual de la máquina
     cursor.execute("""
     UPDATE maquinas
-    SET sede_id = %s
-    WHERE id = %s
+    SET sede_id = ?
+    WHERE id = ?
     """, (sede_destino, maquina_id))
 
     conn.commit()
@@ -523,7 +405,7 @@ def obtener_ultimos_traslados(limit=10):
     LEFT JOIN sedes s1 ON t.sede_origen = s1.id
     LEFT JOIN sedes s2 ON t.sede_destino = s2.id
     ORDER BY t.fecha DESC
-    LIMIT %s
+    LIMIT ?
     """, (limit,))
 
     datos = cursor.fetchall()
@@ -533,18 +415,17 @@ def obtener_ultimos_traslados(limit=10):
 
 #---------------------
 # REGISTRO DE CHECKLISTS
-def insertar_checklist(maquina_id, fecha, origen):
+def insertar_checklist(maquina_id, fecha):
 
     conn = conectar()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO checklists (maquina_id, fecha, origen)
-        VALUES (%s, %s, %s)
-        RETURNING id
-    """, (maquina_id, fecha, origen))
+        INSERT INTO checklists (maquina_id, fecha)
+        VALUES (?, ?)
+    """, (maquina_id, fecha))
 
-    checklist_id = cursor.fetchone()[0]
+    checklist_id = cursor.lastrowid
 
     conn.commit()
     conn.close()
@@ -558,7 +439,7 @@ def insertar_item_checklist(checklist_id, item, cumple, observaciones):
 
     cursor.execute("""
         INSERT INTO checklist_items (checklist_id, item, cumple, observaciones)
-        VALUES (%s, %s, %s, %s)
+        VALUES (?, ?, ?, ?)
     """, (checklist_id, item, cumple, observaciones))
 
     conn.commit()
@@ -603,7 +484,7 @@ def obtener_ultimos_checklists_por_maquina(maquina_id):
         FROM checklists c
         LEFT JOIN checklist_items ci ON c.id = ci.checklist_id
         LEFT JOIN maquinas m ON c.maquina_id = m.id
-        WHERE c.maquina_id = %s
+        WHERE c.maquina_id = ?
         GROUP BY c.id
         ORDER BY c.fecha DESC, c.id DESC
         LIMIT 5
@@ -623,7 +504,7 @@ def obtener_items_checklist(checklist_id):
     cursor.execute("""
         SELECT item, cumple, observaciones
         FROM checklist_items
-        WHERE checklist_id = %s
+        WHERE checklist_id = ?
     """, (checklist_id,))
 
     datos = cursor.fetchall()
@@ -640,13 +521,13 @@ def eliminar_checklist(checklist_id):
     # Primero eliminar los items de la checklist
     cursor.execute("""
         DELETE FROM checklist_items
-        WHERE checklist_id = %s
+        WHERE checklist_id = ?
     """, (checklist_id,))
 
     # Luego eliminar la checklist
     cursor.execute("""
         DELETE FROM checklists
-        WHERE id = %s
+        WHERE id = ?
     """, (checklist_id,))
 
     conn.commit()
@@ -672,7 +553,7 @@ def obtener_ultimos_checklists(limit=10):
     FROM checklists c
     JOIN maquinas m ON c.maquina_id = m.id
     ORDER BY c.fecha DESC
-    LIMIT %s
+    LIMIT ?
     """, (limit,))
 
     data = cursor.fetchall()
@@ -700,7 +581,7 @@ def obtener_checklists_por_ciudad(ciudad):
     FROM checklists c
     JOIN maquinas m ON c.maquina_id = m.id
     JOIN sedes s ON m.sede_id = s.id
-    WHERE s.ciudad = %s
+    WHERE s.ciudad = ?
     ORDER BY c.fecha DESC
     LIMIT 10
     """, (ciudad,))
@@ -730,7 +611,7 @@ def obtener_checklists_por_sede(sede):
     FROM checklists c
     JOIN maquinas m ON c.maquina_id = m.id
     JOIN sedes s ON m.sede_id = s.id
-    WHERE s.nombre = %s
+    WHERE s.nombre = ?
     ORDER BY c.fecha DESC
     LIMIT 10
     """, (sede,))
@@ -753,8 +634,8 @@ def solicitud_pendiente_existente(maquina_id, descripcion):
     cursor.execute("""
         SELECT id
         FROM solicitudes_mantenimiento
-        WHERE maquina_id = %s
-        AND descripcion_falla = %s
+        WHERE maquina_id = ?
+        AND descripcion_falla = ?
         AND estado = 'Pendiente'
     """, (maquina_id, descripcion))
 
@@ -768,17 +649,15 @@ def insertar_solicitud(maquina_id, item_falla, observacion, origen):
 
     conn = conectar()
     cursor = conn.cursor()
-    
-    item_falla_normalizado = normalizar_item(item_falla)
 
     # Buscar si ya existe solicitud pendiente para ese item
     cursor.execute("""
     SELECT id, veces_detectada
     FROM solicitudes_mantenimiento
-    WHERE maquina_id = %s
-    AND LOWER(item_falla) = %s
+    WHERE maquina_id = ?
+    AND item_falla = ?
     AND estado = 'Pendiente'
-    """, (maquina_id, item_falla_normalizado))
+    """, (maquina_id, item_falla))
 
     solicitud = cursor.fetchone()
 
@@ -790,8 +669,8 @@ def insertar_solicitud(maquina_id, item_falla, observacion, origen):
 
         cursor.execute("""
         UPDATE solicitudes_mantenimiento
-        SET veces_detectada = %s
-        WHERE id = %s
+        SET veces_detectada = ?
+        WHERE id = ?
         """, (veces, solicitud_id))
 
         conn.commit()
@@ -807,8 +686,8 @@ def insertar_solicitud(maquina_id, item_falla, observacion, origen):
         cursor.execute("""
         INSERT INTO solicitudes_mantenimiento
         (maquina_id, fecha, item_falla, descripcion_falla, origen, estado, veces_detectada)
-        VALUES (%s, CURRENT_DATE, %s, %s, %s, 'Pendiente', 1)
-        """, (maquina_id, item_falla_normalizado, descripcion, origen))
+        VALUES (?, DATE('now'), ?, ?, ?, 'Pendiente', 1)
+        """, (maquina_id, item_falla, descripcion, origen))
 
         conn.commit()
         conn.close()
@@ -847,7 +726,7 @@ def cerrar_solicitud(solicitud_id):
     cursor.execute("""
     UPDATE solicitudes_mantenimiento
     SET estado = 'Cerrada'
-    WHERE id = %s
+    WHERE id = ?
     """, (solicitud_id,))
 
     conn.commit()
@@ -889,7 +768,7 @@ def obtener_solicitudes_pendientes_por_maquina(maquina_id):
         item_falla,
         MAX(veces_detectada)
     FROM solicitudes_mantenimiento
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     AND estado = 'Pendiente'
     GROUP BY item_falla
     """, (maquina_id,))
@@ -908,7 +787,7 @@ def actualizar_estado_por_solicitudes(maquina_id):
     cursor.execute("""
     SELECT COUNT(*)
     FROM solicitudes_mantenimiento
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     AND estado = 'Pendiente'
     """, (maquina_id,))
 
@@ -921,8 +800,8 @@ def actualizar_estado_por_solicitudes(maquina_id):
 
     cursor.execute("""
     UPDATE maquinas
-    SET estado_operacion = %s
-    WHERE id = %s
+    SET estado_operacion = ?
+    WHERE id = ?
     """, (nuevo_estado, maquina_id))
 
     conn.commit()
@@ -937,7 +816,7 @@ def actualizar_estado_maquina(maquina_id, nuevo_estado):
     cursor.execute("""
     SELECT estado_operacion
     FROM maquinas
-    WHERE id = %s
+    WHERE id = ?
     """, (maquina_id,))
 
     estado_actual = cursor.fetchone()[0]
@@ -947,147 +826,17 @@ def actualizar_estado_maquina(maquina_id, nuevo_estado):
 
         cursor.execute("""
         UPDATE maquinas
-        SET estado_operacion = %s
-        WHERE id = %s
+        SET estado_operacion = ?
+        WHERE id = ?
         """, (nuevo_estado, maquina_id))
 
         cursor.execute("""
         INSERT INTO historial_estado_maquina (maquina_id, estado, fecha)
-        VALUES (%s, %s, CURRENT_DATE)
+        VALUES (?, ?, DATE('now'))
         """, (maquina_id, nuevo_estado))
 
     conn.commit()
     conn.close()
-
-def obtener_solicitudes_filtradas(ciudad=None, sede=None, tipo=None, maquina=None, pagina=1, limite=15):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    offset = (pagina - 1) * limite
-
-    query = """
-    SELECT 
-        s.id,
-        m.numero_equipo,
-        m.tipo,
-        s.descripcion_falla,
-        s.veces_detectada,
-        s.origen,
-        s.fecha,
-        s.estado
-    FROM solicitudes_mantenimiento s
-    LEFT JOIN maquinas m ON s.maquina_id = m.id
-    LEFT JOIN sedes sd ON m.sede_id = sd.id
-    WHERE 1=1
-    """
-
-    params = []
-
-    if ciudad and ciudad != "Todas":
-        query += " AND sd.ciudad = %s"
-        params.append(ciudad)
-
-    if sede and sede != "Todas":
-        query += " AND sd.nombre = %s"
-        params.append(sede)
-
-    if tipo and tipo != "Todos":
-        query += " AND m.tipo = %s"
-        params.append(tipo)
-
-    if maquina and maquina != "Todas":
-        query += " AND m.numero_equipo = %s"
-        params.append(maquina)
-
-    query += " ORDER BY s.id DESC LIMIT %s OFFSET %s"
-    params.extend([limite, offset])
-
-    cursor.execute(query, params)
-    datos = cursor.fetchall()
-
-    conn.close()
-    return datos
-
-def contar_solicitudes_filtradas(ciudad=None, sede=None, tipo=None, maquina=None):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    query = """
-    SELECT COUNT(*)
-    FROM solicitudes_mantenimiento s
-    LEFT JOIN maquinas m ON s.maquina_id = m.id
-    LEFT JOIN sedes sd ON m.sede_id = sd.id
-    WHERE 1=1
-    """
-
-    params = []
-
-    if ciudad and ciudad != "Todas":
-        query += " AND sd.ciudad = %s"
-        params.append(ciudad)
-
-    if sede and sede != "Todas":
-        query += " AND sd.nombre = %s"
-        params.append(sede)
-
-    if tipo and tipo != "Todos":
-        query += " AND m.tipo = %s"
-        params.append(tipo)
-
-    if maquina and maquina != "Todas":
-        query += " AND m.numero_equipo = %s"
-        params.append(maquina)
-
-    cursor.execute(query, params)
-    total = cursor.fetchone()[0]
-
-    conn.close()
-    return total
-
-def resumen_estados_solicitudes(ciudad=None, sede=None, tipo=None, maquina=None):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    query = """
-    SELECT 
-        SUM(CASE WHEN s.estado = 'Pendiente' THEN 1 ELSE 0 END),
-        SUM(CASE WHEN s.estado = 'Cerrada' THEN 1 ELSE 0 END),
-        COUNT(*)
-    FROM solicitudes_mantenimiento s
-    LEFT JOIN maquinas m ON s.maquina_id = m.id
-    LEFT JOIN sedes sd ON m.sede_id = sd.id
-    WHERE 1=1
-    """
-
-    params = []
-
-    if ciudad and ciudad != "Todas":
-        query += " AND sd.ciudad = %s"
-        params.append(ciudad)
-
-    if sede and sede != "Todas":
-        query += " AND sd.nombre = %s"
-        params.append(sede)
-
-    if tipo and tipo != "Todos":
-        query += " AND m.tipo = %s"
-        params.append(tipo)
-
-    if maquina and maquina != "Todas":
-        query += " AND m.numero_equipo = %s"
-        params.append(maquina)
-
-    cursor.execute(query, params)
-
-    pendientes, cerradas, total = cursor.fetchone()
-
-    conn.close()
-
-    return pendientes or 0, cerradas or 0, total or 0
-
 
 
 
@@ -1102,18 +851,17 @@ def registrar_mantenimiento(maquina_id, fecha, tecnico, recibido_por, observacio
 
         cursor.execute("""
         INSERT INTO mantenimientos (maquina_id, fecha, tecnico, recibido_por, observaciones)
-        VALUES (%s, %s, %s, %s, %s)
-        RETURNING id
+        VALUES (?, ?, ?, ?, ?)
         """, (maquina_id, fecha, tecnico, recibido_por, observaciones))
 
-        mantenimiento_id = cursor.fetchone()[0]
+        mantenimiento_id = cursor.lastrowid
 
         for item in solicitudes:
 
             cursor.execute("""
             SELECT id FROM solicitudes_mantenimiento
-            WHERE maquina_id = %s
-            AND item_falla = %s
+            WHERE maquina_id = ?
+            AND item_falla = ?
             AND estado = 'Pendiente'
             """, (maquina_id, item))
 
@@ -1123,13 +871,13 @@ def registrar_mantenimiento(maquina_id, fecha, tecnico, recibido_por, observacio
 
                 cursor.execute("""
                 INSERT INTO mantenimiento_solicitudes (mantenimiento_id, solicitud_id)
-                VALUES (%s, %s)
+                VALUES (?, ?)
                 """, (mantenimiento_id, s[0]))
 
                 cursor.execute("""
                 UPDATE solicitudes_mantenimiento
                 SET estado = 'Cerrada'
-                WHERE id = %s
+                WHERE id = ?
                 """, (s[0],))
 
         conn.commit()
@@ -1157,7 +905,7 @@ def obtener_mantenimientos_paginados(pagina, registros_por_pagina=15):
     LEFT JOIN maquinas m2 ON m.maquina_id = m2.id
     LEFT JOIN sedes s ON m2.sede_id = s.id
     ORDER BY m.id DESC
-    LIMIT %s OFFSET %s
+    LIMIT ? OFFSET ?
     """, (registros_por_pagina, offset))
 
     datos = cursor.fetchall()
@@ -1185,17 +933,13 @@ def obtener_mantenimientos_por_maquina(maquina_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT
-        m.id, 
+    SELECT 
         m.fecha,
-        ma.numero_equipo,
-        ma.tipo,
         m.tecnico,
         m.recibido_por,
         m.observaciones
     FROM mantenimientos m
-    JOIN maquinas ma ON m.maquina_id = ma.id
-    WHERE m.maquina_id = %s
+    WHERE m.maquina_id = ?
     ORDER BY m.fecha DESC
     """, (maquina_id,))
 
@@ -1204,128 +948,6 @@ def obtener_mantenimientos_por_maquina(maquina_id):
     conn.close()
 
     return datos
-
-def obtener_todos_mantenimientos():
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT 
-        m.id,
-        m.fecha,
-        ma.numero_equipo,
-        ma.tipo,
-        m.tecnico,
-        m.observaciones
-    FROM mantenimientos m
-    JOIN maquinas ma ON m.maquina_id = ma.id
-    ORDER BY m.fecha DESC, m.id DESC
-    """)
-
-    datos = cursor.fetchall()
-
-    conn.close()
-
-    return datos
-
-def obtener_mantenimientos_con_solicitudes(maquina_id=None):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    if maquina_id:
-        cursor.execute("""
-        SELECT 
-            m.id,
-            m.fecha,
-            ma.numero_equipo,
-            ma.tipo,
-            m.tecnico,
-            m.recibido_por,
-            m.observaciones,
-            STRING_AGG(sm.solicitud_id::text, ',')
-        FROM mantenimientos m
-        JOIN maquinas ma ON m.maquina_id = ma.id
-        LEFT JOIN mantenimiento_solicitudes sm ON m.id = sm.mantenimiento_id
-        WHERE m.maquina_id = %s
-        GROUP BY 
-            m.id
-            m.fecha,
-            ma.numero_equipo,
-            ma.tipo,
-            m.tecnico,
-            m.recibido_por,
-            m.observaciones
-        ORDER BY m.fecha DESC, m.id DESC
-        """, (maquina_id,))
-    else:
-        cursor.execute("""
-        SELECT 
-            m.id,
-            m.fecha,
-            ma.numero_equipo,
-            ma.tipo,
-            m.tecnico,
-            m.recibido_por,
-            m.observaciones,
-            STRING_AGG(sm.solicitud_id::text, ',')
-        FROM mantenimientos m
-        JOIN maquinas ma ON m.maquina_id = ma.id
-        LEFT JOIN mantenimiento_solicitudes sm ON m.id = sm.mantenimiento_id
-        GROUP BY 
-            m.id,
-            m.fecha,
-            ma.numero_equipo,
-            ma.tipo,
-            m.tecnico,
-            m.recibido_por,
-            m.observaciones
-        ORDER BY m.fecha DESC, m.id DESC
-        """)
-
-    datos = cursor.fetchall()
-    conn.close()
-
-    return datos
-
-def actualizar_mantenimiento(mantenimiento_id, tecnico, recibido_por, observaciones):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    UPDATE mantenimientos
-    SET tecnico = %s, recibido_por = %s, observaciones = %s
-    WHERE id = %s
-    """, (tecnico, recibido_por, observaciones, mantenimiento_id))
-
-    conn.commit()
-    conn.close()
-
-def obtener_descripciones_solicitudes(ids_str):
-
-    if not ids_str:
-        return "Sin solicitudes"
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    ids = ids_str.split(",")
-
-    query = f"""
-    SELECT item_falla
-    FROM solicitudes_mantenimiento
-    WHERE id IN ({','.join(['%s']*len(ids))})
-    """
-
-    cursor.execute(query, ids)
-
-    resultados = [r[0] for r in cursor.fetchall()]
-
-    conn.close()
-
-    return ", ".join(resultados)
 
 def insertar_costo(mantenimiento_id, tipo, descripcion, cantidad, costo_unitario):
 
@@ -1337,7 +959,7 @@ def insertar_costo(mantenimiento_id, tipo, descripcion, cantidad, costo_unitario
     cursor.execute("""
     INSERT INTO costos_mantenimiento
     (mantenimiento_id, tipo_costo, descripcion, cantidad, costo_unitario, costo_total)
-    VALUES (%s, %s, %s, %s, %s, %s)
+    VALUES (?, ?, ?, ?, ?, ?)
     """, (mantenimiento_id, tipo, descripcion, cantidad, costo_unitario, costo_total))
 
     conn.commit()
@@ -1351,7 +973,7 @@ def obtener_costos_por_mantenimiento(mantenimiento_id):
     cursor.execute("""
     SELECT *
     FROM costos_mantenimiento
-    WHERE mantenimiento_id = %s
+    WHERE mantenimiento_id = ?
     """, (mantenimiento_id,))
 
     resultados = cursor.fetchall()
@@ -1359,114 +981,6 @@ def obtener_costos_por_mantenimiento(mantenimiento_id):
     conn.close()
 
     return resultados
-
-def actualizar_costo(costo_id, descripcion, cantidad, costo_unitario):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    costo_total = cantidad * costo_unitario
-
-    cursor.execute("""
-    UPDATE costos_mantenimiento
-    SET descripcion = %s, cantidad = %s, costo_unitario = %s, costo_total = %s
-    WHERE id = %s
-    """, (descripcion, cantidad, costo_unitario, costo_total, costo_id))
-
-    conn.commit()
-    conn.close()
-
-def eliminar_costo(costo_id):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("DELETE FROM costos_mantenimiento WHERE id = %s", (costo_id,))
-
-    conn.commit()
-    conn.close()
-    
-    
-    
-
-# HOJA DE VIDA
-def obtener_costo_total_maquina(maquina_id):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT SUM(cm.costo_total)
-    FROM costos_mantenimiento cm
-    JOIN mantenimientos m ON cm.mantenimiento_id = m.id
-    WHERE m.maquina_id = %s
-    """, (maquina_id,))
-
-    total = cursor.fetchone()[0]
-
-    conn.close()
-
-    return total or 0
-
-def obtener_total_por_mantenimiento(mantenimiento_id):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT SUM(costo_total)
-    FROM costos_mantenimiento
-    WHERE mantenimiento_id = %s
-    """, (mantenimiento_id,))
-
-    total = cursor.fetchone()[0]
-
-    conn.close()
-
-    return total or 0
-
-def obtener_ultimas_solicitudes(maquina_id, limite=3):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT item_falla, fecha
-    FROM solicitudes_mantenimiento
-    WHERE maquina_id = %s
-    ORDER BY fecha DESC
-    LIMIT %s
-    """, (maquina_id, limite))
-
-    datos = cursor.fetchall()
-    conn.close()
-
-    return datos
-
-def obtener_costos_por_maquina(maquina_id, limite=10):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT 
-        cm.tipo_costo,
-        cm.descripcion,
-        cm.cantidad,
-        cm.costo_unitario,
-        cm.costo_total,
-        m.fecha
-    FROM costos_mantenimiento cm
-    JOIN mantenimientos m ON cm.mantenimiento_id = m.id
-    WHERE m.maquina_id = %s
-    ORDER BY m.fecha DESC
-    LIMIT %s
-    """, (maquina_id, limite))
-
-    datos = cursor.fetchall()
-    conn.close()
-
-    return datos
 
 
 #---------------------
@@ -1479,7 +993,7 @@ def obtener_solicitudes_por_maquina(maquina_id):
     cursor.execute("""
     SELECT fecha, item_falla, veces_detectada, estado
     FROM solicitudes_mantenimiento
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     ORDER BY fecha DESC
     """, (maquina_id,))
 
@@ -1501,7 +1015,7 @@ def obtener_checklists_por_maquina(maquina_id):
         SUM(CASE WHEN ci.cumple = 0 THEN 1 ELSE 0 END) AS fallas
     FROM checklists c
     LEFT JOIN checklist_items ci ON c.id = ci.checklist_id
-    WHERE c.maquina_id = %s
+    WHERE c.maquina_id = ?
     GROUP BY c.id
     ORDER BY c.fecha DESC
     """, (maquina_id,))
@@ -1517,7 +1031,7 @@ def obtener_checklists_por_maquina(maquina_id):
         cursor.execute("""
         SELECT item
         FROM checklist_items
-        WHERE checklist_id = %s
+        WHERE checklist_id = ?
         AND cumple = 0
         """, (checklist_id,))
 
@@ -1550,7 +1064,7 @@ def obtener_traslados_por_maquina(maquina_id):
     FROM traslados t
     LEFT JOIN sedes s1 ON t.sede_origen = s1.id
     LEFT JOIN sedes s2 ON t.sede_destino = s2.id
-    WHERE t.maquina_id = %s
+    WHERE t.maquina_id = ?
     ORDER BY t.fecha DESC
     """, (maquina_id,))
 
@@ -1569,7 +1083,7 @@ def obtener_indicadores_maquina(maquina_id):
     cursor.execute("""
     SELECT estado_operacion
     FROM maquinas
-    WHERE id = %s
+    WHERE id = ?
     """, (maquina_id,))
     estado = cursor.fetchone()
     estado = estado[0] if estado else "Desconocido"
@@ -1578,7 +1092,7 @@ def obtener_indicadores_maquina(maquina_id):
     cursor.execute("""
     SELECT COUNT(*)
     FROM mantenimientos
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     """, (maquina_id,))
     total_mantenimientos = cursor.fetchone()[0]
 
@@ -1586,7 +1100,7 @@ def obtener_indicadores_maquina(maquina_id):
     cursor.execute("""
     SELECT SUM(veces_detectada)
     FROM solicitudes_mantenimiento
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     """, (maquina_id,))
     total_fallas = cursor.fetchone()[0]
     total_fallas = total_fallas if total_fallas else 0
@@ -1595,7 +1109,7 @@ def obtener_indicadores_maquina(maquina_id):
     cursor.execute("""
     SELECT item_falla, MAX(veces_detectada)
     FROM solicitudes_mantenimiento
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     """, (maquina_id,))
     falla = cursor.fetchone()
 
@@ -1606,7 +1120,7 @@ def obtener_indicadores_maquina(maquina_id):
     cursor.execute("""
     SELECT fecha
     FROM mantenimientos
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     ORDER BY fecha DESC
     LIMIT 1
     """, (maquina_id,))
@@ -1635,7 +1149,7 @@ def obtener_ubicacion_maquina(maquina_id):
         s.nombre
     FROM maquinas m
     LEFT JOIN sedes s ON m.sede_id = s.id
-    WHERE m.id = %s
+    WHERE m.id = ?
     """, (maquina_id,))
 
     datos = cursor.fetchone()
@@ -1652,7 +1166,7 @@ def obtener_ultimo_traslado(maquina_id):
     cursor.execute("""
     SELECT fecha
     FROM traslados
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     ORDER BY fecha DESC
     LIMIT 1
     """, (maquina_id,))
@@ -1671,7 +1185,7 @@ def obtener_historial_estado(maquina_id):
     cursor.execute("""
     SELECT estado, fecha
     FROM historial_estado_maquina
-    WHERE maquina_id = %s
+    WHERE maquina_id = ?
     ORDER BY fecha DESC
     """, (maquina_id,))
 
@@ -1726,29 +1240,6 @@ def obtener_top_fallas():
 
     datos = cursor.fetchall()
 
-    conn.close()
-
-    return datos
-
-def obtener_top_fallas_por_maquina():
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT 
-        m.tipo,
-        m.numero_equipo,
-        s.item_falla,
-        COUNT(*) as total
-    FROM solicitudes_mantenimiento s
-    JOIN maquinas m ON s.maquina_id = m.id
-    GROUP BY m.tipo, m.numero_equipo, s.item_falla
-    ORDER BY total DESC
-    LIMIT 10
-    """)
-
-    datos = cursor.fetchall()
     conn.close()
 
     return datos
@@ -1822,8 +1313,8 @@ def obtener_alertas():
     FROM solicitudes_mantenimiento s
     LEFT JOIN maquinas m ON s.maquina_id = m.id
     WHERE s.estado = 'Pendiente'
-    GROUP BY s.maquina_id, m.numero_equipo, m.tipo
-    HAVING SUM(s.veces_detectada) >= 5
+    GROUP BY s.maquina_id
+    HAVING total >= 5
     """)
 
     for m in cursor.fetchall():
@@ -1846,7 +1337,7 @@ def obtener_alertas():
         fecha = m[2]
 
         if fecha:
-            fecha_dt = fecha
+            fecha_dt = datetime.strptime(fecha, "%Y-%m-%d")
             dias = (hoy - fecha_dt).days
 
             if dias > 30:
@@ -1870,7 +1361,7 @@ def obtener_ranking_maquinas():
         SUM(s.veces_detectada) as total_fallas
     FROM solicitudes_mantenimiento s
     LEFT JOIN maquinas m ON s.maquina_id = m.id
-    GROUP BY s.maquina_id, m.numero_equipo, m.tipo
+    GROUP BY s.maquina_id
     ORDER BY total_fallas DESC
     LIMIT 5
     """)
@@ -1891,7 +1382,7 @@ def obtener_costos_dashboard():
         m.activo_fijo,
         m.tipo,
         m.numero_equipo,
-        SUM(CAST(cm.costo_total AS NUMERIC)) as total_costos
+        SUM(CAST(cm.costo_total AS REAL)) as total_costos
     FROM costos_mantenimiento cm
     JOIN mantenimientos mt ON cm.mantenimiento_id = mt.id
     JOIN maquinas m ON mt.maquina_id = m.id
@@ -1904,122 +1395,8 @@ def obtener_costos_dashboard():
     return datos
 
 
-#----------------------------
-# DAHSBOARD DE COSTOS
-def obtener_costos_filtrados(fecha_inicio=None, fecha_fin=None, tipo=None, maquina=None, tipo_costo=None):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    query = """
-    SELECT 
-        m.fecha,
-        ma.tipo,
-        ma.numero_equipo,
-        cm.tipo_costo,
-        cm.descripcion,
-        cm.costo_total
-    FROM costos_mantenimiento cm
-    JOIN mantenimientos m ON cm.mantenimiento_id = m.id
-    JOIN maquinas ma ON m.maquina_id = ma.id
-    WHERE 1=1
-    """
-
-    params = []
-
-    if fecha_inicio:
-        query += " AND m.fecha >= %s"
-        params.append(fecha_inicio)
-
-    if fecha_fin:
-        query += " AND m.fecha <= %s"
-        params.append(fecha_fin)
-
-    if tipo and tipo != "Todos":
-        query += " AND ma.tipo = %s"
-        params.append(tipo)
-
-    if maquina:
-        query += " AND ma.numero_equipo = %s"
-        params.append(maquina)
-
-    if tipo_costo and tipo_costo != "Todos":
-        query += " AND cm.tipo_costo = %s"
-        params.append(tipo_costo)
-
-    query += " ORDER BY m.fecha DESC"
-
-    cursor.execute(query, params)
-    datos = cursor.fetchall()
-
-    conn.close()
-    return datos 
-
-def obtener_kpis_costos():
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT SUM(costo_total), COUNT(*) FROM costos_mantenimiento")
-    total, cantidad = cursor.fetchone()
-
-    promedio = (total / cantidad) if cantidad else 0
-
-    cursor.execute("""
-    SELECT MAX(m.fecha)
-    FROM costos_mantenimiento cm
-    JOIN mantenimientos m ON cm.mantenimiento_id = m.id
-    """)
-    ultima_fecha = cursor.fetchone()[0]
-
-    conn.close()
-
-    return total or 0, promedio or 0, cantidad or 0, ultima_fecha
-
-def obtener_ranking_costos_maquinas(limite=5):
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT 
-        ma.tipo,
-        ma.numero_equipo,
-        SUM(cm.costo_total) as total
-    FROM costos_mantenimiento cm
-    JOIN mantenimientos m ON cm.mantenimiento_id = m.id
-    JOIN maquinas ma ON m.maquina_id = ma.id
-    GROUP BY ma.tipo, ma.numero_equipo
-    ORDER BY total DESC
-    LIMIT %s
-    """, (limite,))
-
-    datos = cursor.fetchall()
-    conn.close()
-
-    return datos
-
-def obtener_costos_por_mes():
-
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    SELECT 
-        TO_CHAR(m.fecha, 'YYYY-MM') as mes,
-        SUM(cm.costo_total)
-    FROM costos_mantenimiento cm
-    JOIN mantenimientos m ON cm.mantenimiento_id = m.id
-    GROUP BY mes
-    ORDER BY mes ASC
-    """)
-
-    datos = cursor.fetchall()
-    conn.close()
-
-    return datos
-
-
+####----------------------------
+### BORRAR ESTA FUNCIÓN DESPUÉS DE USARLA 
 
 
 
