@@ -1,0 +1,20 @@
+# Secrets
+.streamlit/secrets.toml
+.streamlit/
+
+# Python
+__pycache__/
+*.pyc
+
+# Base de datos local
+*.db
+
+# Entornos virtuales
+venv/
+.env
+
+# VS Code
+.vscode/
+
+# Otros
+.DS_Store
