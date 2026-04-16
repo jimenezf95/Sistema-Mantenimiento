@@ -1250,7 +1250,7 @@ def obtener_mantenimientos_con_solicitudes(maquina_id=None):
         LEFT JOIN mantenimiento_solicitudes sm ON m.id = sm.mantenimiento_id
         WHERE m.maquina_id = %s
         GROUP BY 
-            m.id
+            m.id,
             m.fecha,
             ma.numero_equipo,
             ma.tipo,
