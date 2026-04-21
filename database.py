@@ -105,6 +105,48 @@ def crear_tablas():
         FOREIGN KEY (checklist_id) REFERENCES checklists(id)
     )
     """)
+    
+    # ======================
+    # CHECKLIST DINÁMICO 🔥
+    # ======================
+
+    # 🟦 Categorías
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS categorias_checklist (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT,
+        tipo_maquina TEXT,
+        orden INTEGER
+    )
+    """)
+
+    # 🟩 Items
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS items_checklist (
+        id SERIAL PRIMARY KEY,
+        categoria_id INTEGER,
+        nombre TEXT,
+        activo BOOLEAN DEFAULT TRUE,
+        orden INTEGER,
+        FOREIGN KEY (categoria_id) REFERENCES categorias_checklist(id)
+    )
+    """)
+
+    # 🟨 Relación con histórico (NO rompe nada)
+    cursor.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name='checklist_items'
+                AND column_name='item_id'
+            ) THEN
+                ALTER TABLE checklist_items ADD COLUMN item_id INTEGER;
+            END IF;
+        END
+        $$;
+    """)
 
     # ======================
     # SOLICITUDES (MEJORADA)
@@ -167,6 +209,16 @@ def crear_tablas():
         solicitud_id INTEGER,
         FOREIGN KEY (mantenimiento_id) REFERENCES mantenimientos(id),
         FOREIGN KEY (solicitud_id) REFERENCES solicitudes_mantenimiento(id)
+    )
+    """)
+    
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS historial_estado_maquina (
+        id SERIAL PRIMARY KEY,
+        maquina_id INTEGER NOT NULL,
+        estado TEXT NOT NULL,
+        fecha DATE DEFAULT CURRENT_DATE,
+        FOREIGN KEY (maquina_id) REFERENCES maquinas(id)
     )
     """)
 
@@ -551,15 +603,16 @@ def insertar_checklist(maquina_id, fecha, origen):
 
     return checklist_id
 
-def insertar_item_checklist(checklist_id, item, cumple, observaciones):
+def insertar_item_checklist(checklist_id, item, cumple, observaciones, item_id=None):
 
     conn = conectar()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO checklist_items (checklist_id, item, cumple, observaciones)
-        VALUES (%s, %s, %s, %s)
-    """, (checklist_id, item, cumple, observaciones))
+        INSERT INTO checklist_items 
+        (checklist_id, item, cumple, observaciones, item_id)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (checklist_id, item, cumple, observaciones, item_id))
 
     conn.commit()
     conn.close()
@@ -740,9 +793,304 @@ def obtener_checklists_por_sede(sede):
 
     return data
 
+# EDICION DE CHECKLISTS
+def obtener_categorias(tipo_maquina):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, nombre
+        FROM categorias_checklist
+        WHERE tipo_maquina = %s
+        ORDER BY orden ASC
+    """, (tipo_maquina,))
+
+    data = cursor.fetchall()
+    conn.close()
+
+    return [{"id": d[0], "nombre": d[1]} for d in data]
+
+def obtener_items(categoria_id):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, nombre
+        FROM items_checklist
+        WHERE categoria_id = %s AND activo = TRUE
+        ORDER BY orden ASC
+    """, (categoria_id,))
+
+    data = cursor.fetchall()
+    conn.close()
+
+    return [{"id": d[0], "nombre": d[1]} for d in data]
+
+def crear_categoria(nombre, tipo_maquina, orden):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO categorias_checklist (nombre, tipo_maquina, orden)
+        VALUES (%s, %s, %s)
+    """, (nombre, tipo_maquina, orden))
+
+    conn.commit()
+    conn.close()
+
+def crear_item(categoria_id, nombre, orden):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO items_checklist (categoria_id, nombre, orden)
+        VALUES (%s, %s, %s)
+    """, (categoria_id, nombre, orden))
+
+    conn.commit()
+    conn.close()
+    
+def editar_item(item_id, nuevo_nombre):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE items_checklist
+        SET nombre = %s
+        WHERE id = %s
+    """, (nuevo_nombre, item_id))
+
+    conn.commit()
+    conn.close()   
+    
+def desactivar_item(item_id):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE items_checklist
+        SET activo = FALSE
+        WHERE id = %s
+    """, (item_id,))
+
+    conn.commit()
+    conn.close()
+    
+def actualizar_orden_item(item_id, nuevo_orden):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE items_checklist
+        SET orden = %s
+        WHERE id = %s
+    """, (nuevo_orden, item_id))
+
+    conn.commit()
+    conn.close()    
+
+def obtener_checklists_paginados(limit, offset):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT c.id, c.fecha, c.maquina_id
+        FROM checklists c
+        ORDER BY c.id DESC
+        LIMIT %s OFFSET %s
+    """, (limit, offset))
+
+    data = cursor.fetchall()
+    conn.close()
+
+    return data
+
+def contar_checklists():
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM checklists")
+    total = cursor.fetchone()[0]
+
+    conn.close()
+    return total 
+
+def obtener_detalle_checklist(checklist_id):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT item, cumple, observaciones
+        FROM checklist_items
+        WHERE checklist_id = %s
+    """, (checklist_id,))
+
+    data = cursor.fetchall()
+    conn.close()
+
+    return data
+
+def obtener_checklists_filtrados(limit, offset, fecha_inicio=None, fecha_fin=None, tipo_maquina=None, maquina_id=None):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT c.id, c.fecha, c.maquina_id
+        FROM checklists c
+        JOIN maquinas m ON c.maquina_id = m.id
+        WHERE 1=1
+    """
+
+    params = []
+
+    # Filtro por fecha
+    if fecha_inicio and fecha_fin:
+        query += " AND c.fecha BETWEEN %s AND %s"
+        params.extend([fecha_inicio, fecha_fin])
+
+    # Filtro por tipo de máquina
+    if tipo_maquina:
+        query += " AND m.tipo = %s"
+        params.append(tipo_maquina)
+
+    # Filtro por máquina específica
+    if maquina_id:
+        query += " AND c.maquina_id = %s"
+        params.append(maquina_id)
+
+    # Orden + paginación
+    query += " ORDER BY c.id DESC LIMIT %s OFFSET %s"
+    params.extend([limit, offset])
+
+    cursor.execute(query, tuple(params))
+    data = cursor.fetchall()
+
+    conn.close()
+    return data
+
+def contar_checklists_filtrados(fecha_inicio=None, fecha_fin=None, tipo_maquina=None, maquina_id=None):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT COUNT(*)
+        FROM checklists c
+        JOIN maquinas m ON c.maquina_id = m.id
+        WHERE 1=1
+    """
+
+    params = []
+
+    # Filtro por fecha
+    if fecha_inicio and fecha_fin:
+        query += " AND c.fecha BETWEEN %s AND %s"
+        params.extend([fecha_inicio, fecha_fin])
+
+    # Filtro por tipo de máquina
+    if tipo_maquina:
+        query += " AND m.tipo = %s"
+        params.append(tipo_maquina)
+
+    # Filtro por máquina específica
+    if maquina_id:
+        query += " AND c.maquina_id = %s"
+        params.append(maquina_id)
+
+    cursor.execute(query, tuple(params))
+    total = cursor.fetchone()[0]
+
+    conn.close()
+    return total   
+
+def obtener_checklists_export(fecha_inicio=None, fecha_fin=None, tipo_maquina=None, maquina_id=None):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT 
+            c.id,
+            c.fecha,
+            m.tipo,
+            m.numero_equipo,
+            s.ciudad,
+            s.nombre
+        FROM checklists c
+        JOIN maquinas m ON c.maquina_id = m.id
+        LEFT JOIN sedes s ON m.sede_id = s.id
+        WHERE 1=1
+    """
+
+    params = []
+
+    if fecha_inicio and fecha_fin:
+        query += " AND c.fecha BETWEEN %s AND %s"
+        params.extend([fecha_inicio, fecha_fin])
+
+    if tipo_maquina:
+        query += " AND m.tipo = %s"
+        params.append(tipo_maquina)
+
+    if maquina_id:
+        query += " AND c.maquina_id = %s"
+        params.append(maquina_id)
+
+    query += " ORDER BY c.fecha DESC"
+
+    cursor.execute(query, tuple(params))
+    checklists = cursor.fetchall()
+
+    # 🔥 Obtener detalles
+    resultado = []
+
+    for c in checklists:
+
+        checklist_id = c[0]
+
+        cursor.execute("""
+            SELECT item, cumple, observaciones
+            FROM checklist_items
+            WHERE checklist_id = %s
+        """, (checklist_id,))
+
+        items = cursor.fetchall()
+
+        no_conformes = [(i[0], i[2]) for i in items if i[1] == 0]
+
+        if not no_conformes:
+            resumen = "Sin no conformidades"
+        else:
+            lista_items = [i[0] for i in no_conformes]
+            resumen = f"{len(no_conformes)} fallas: " + ", ".join(lista_items)
+
+        resultado.append((
+            c[1],  # fecha
+            f"{c[2]} {c[3]}",  # maquina
+            c[4],  # ciudad
+            c[5],  # sede
+            resumen
+        ))
+
+    conn.close()
+    return resultado
 
 
 
+
+
+    
 #---------------------
 # SOLICITUDES DE MANTENIMIENTO
 def solicitud_pendiente_existente(maquina_id, descripcion):
@@ -1088,6 +1436,62 @@ def resumen_estados_solicitudes(ciudad=None, sede=None, tipo=None, maquina=None)
 
     return pendientes or 0, cerradas or 0, total or 0
 
+def obtener_solicitudes_export(ciudad=None, sede=None, tipo=None, maquina_id=None):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT 
+            s.fecha,
+            (m.tipo || ' ' || m.numero_equipo) AS maquina,
+            m.tipo,
+            s.item_falla,
+            s.veces_detectada,
+            s.estado,
+            s.origen
+        FROM solicitudes_mantenimiento s
+        JOIN maquinas m ON s.maquina_id = m.id
+        WHERE 1=1
+    """
+
+    params = []
+
+    # -------------------------
+    # FILTRO CIUDAD
+    # -------------------------
+    if ciudad and ciudad != "Todas":
+        query += " AND m.ciudad = %s"
+        params.append(ciudad)
+
+    # -------------------------
+    # FILTRO SEDE
+    # -------------------------
+    if sede and sede != "Todas":
+        query += " AND m.sede = %s"
+        params.append(sede)
+
+    # -------------------------
+    # FILTRO TIPO
+    # -------------------------
+    if tipo and tipo != "Todos":
+        query += " AND m.tipo = %s"
+        params.append(tipo)
+
+    # -------------------------
+    # FILTRO MÁQUINA
+    # -------------------------
+    if maquina_id:
+        query += " AND s.maquina_id = %s"
+        params.append(maquina_id)
+
+    query += " ORDER BY s.fecha DESC"
+
+    cursor.execute(query, tuple(params))
+    data = cursor.fetchall()
+
+    conn.close()
+    return data
 
 
 
@@ -1386,8 +1790,90 @@ def eliminar_costo(costo_id):
     conn.commit()
     conn.close()
     
-    
-    
+def obtener_mantenimientos_export(maquina_id=None):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT 
+            m.ciudad,
+            m.sede,
+            (mq.tipo || ' ' || mq.numero_equipo) AS maquina,
+            mq.tipo,
+            m.fecha,
+            m.descripcion
+        FROM mantenimientos m
+        JOIN maquinas mq ON m.maquina_id = mq.id
+        WHERE 1=1
+    """
+    params = []
+
+    if maquina_id:
+        query += " AND m.maquina_id = %s"
+        params.append(maquina_id)
+
+    query += " ORDER BY m.fecha DESC"
+
+    cursor.execute(query, tuple(params))
+    data = cursor.fetchall()
+
+    conn.close()
+    return data    
+
+def obtener_mantenimientos_con_costos_export(maquina_id=None):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    # -------------------------
+    # MANTENIMIENTOS
+    # -------------------------
+    query_mant = """
+        SELECT 
+            m.id,
+            mq.tipo,
+            mq.numero_equipo,
+            m.fecha,
+            m.tecnico
+        FROM mantenimientos m
+        JOIN maquinas mq ON m.maquina_id = mq.id
+        WHERE 1=1
+    """
+
+    params = []
+
+    if maquina_id:
+        query_mant += " AND m.maquina_id = %s"
+        params.append(maquina_id)
+
+    query_mant += " ORDER BY m.fecha DESC"
+
+    cursor.execute(query_mant, tuple(params))
+    mantenimientos = cursor.fetchall()
+
+    # -------------------------
+    # COSTOS
+    # -------------------------
+    cursor.execute("""
+        SELECT 
+            mantenimiento_id,
+            tipo_costo,
+            descripcion,
+            cantidad,
+            costo_unitario,
+            costo_total
+        FROM costos_mantenimiento
+    """)
+
+    costos = cursor.fetchall()
+
+    conn.close()
+
+    return mantenimientos, costos
+
+
+   
 
 # HOJA DE VIDA
 def obtener_costo_total_maquina(maquina_id):
@@ -1593,9 +2079,12 @@ def obtener_indicadores_maquina(maquina_id):
 
     # Falla más repetida
     cursor.execute("""
-    SELECT item_falla, MAX(veces_detectada)
+    SELECT item_falla, MAX(veces_detectada) as max_rep
     FROM solicitudes_mantenimiento
     WHERE maquina_id = %s
+    GROUP BY item_falla
+    ORDER BY max_rep DESC
+    LIMIT 1
     """, (maquina_id,))
     falla = cursor.fetchone()
 

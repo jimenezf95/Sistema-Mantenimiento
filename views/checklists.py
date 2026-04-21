@@ -1,5 +1,18 @@
 import streamlit as st
 
+@st.cache_data(ttl=60)
+def obtener_maquinas_cached():
+    return obtener_maquinas()
+
+@st.cache_data(ttl=60)
+def obtener_categorias_cached(tipo_maquina):
+    return obtener_categorias(tipo_maquina)
+
+@st.cache_data(ttl=60)
+def obtener_items_cached(categoria_id):
+    return obtener_items(categoria_id)
+
+
 from database import (
     obtener_maquinas,
     insertar_checklist,
@@ -11,10 +24,10 @@ from database import (
     obtener_ultimos_checklists,
     eliminar_checklist,
     insertar_solicitud,
-    actualizar_estado_por_solicitudes
+    actualizar_estado_por_solicitudes, 
+    obtener_categorias,
+    obtener_items
 )
-
-from config_checklist import checklists_por_tipo
 
 
 def vista_checklists():
@@ -42,8 +55,11 @@ def vista_checklist_qr(maquina_id_qr):
     if st.session_state.get("checklist_completada"):
 
         resumen = st.session_state.get("resumen_checklist", {})
-        maquinas = obtener_maquinas()
-        maquina = next((m for m in maquinas if int(m[0]) == maquina_id_qr), None)
+        maquinas = obtener_maquinas_cached()
+        #maquina = next((m for m in maquinas if m[0] == maquina_id), None)
+        maquinas_dict = {m[0]: m for m in maquinas}
+        maquina = maquinas_dict.get(maquina_id)
+        
         if not maquina:
             st.error("Máquina no encontrada")
             return
@@ -75,9 +91,13 @@ def vista_checklist_qr(maquina_id_qr):
 
         return
 
-    maquinas = obtener_maquinas()
-    maquina = next((m for m in maquinas if int(m[0]) == maquina_id_qr), None)
-
+    maquinas = obtener_maquinas_cached()
+    #maquina = next((m for m in maquinas if int(m[0]) == maquina_id_qr), None)
+    maquinas_dict = {int(m[0]): m for m in maquinas}
+    maquina = maquinas_dict.get(maquina_id_qr)
+    
+    
+    
     if not maquina:
         st.error("Máquina no encontrada")
         return
@@ -117,43 +137,46 @@ def vista_checklist_qr(maquina_id_qr):
 
 def vista_checklist_manual():
 
-    maquinas = obtener_maquinas()
+    maquinas = obtener_maquinas_cached()
 
     if not maquinas:
         st.warning("Primero debes registrar máquinas.")
         return
 
-    ciudades = sorted(list(set([m[8] for m in maquinas if m[8] is not None])))
+    with st.form("form_seleccion_maquina"):
 
-    ciudad = st.selectbox("Ciudad", ["Seleccione una opción"] + ciudades)
+        ciudades = sorted(list(set([m[8] for m in maquinas if m[8] is not None])))
+        ciudad = st.selectbox("Ciudad", ciudades)
 
-    if ciudad == "Seleccione una opción":
+        maquinas_ciudad = [m for m in maquinas if m[8] == ciudad]
+
+        sedes = sorted(list(set([m[7] for m in maquinas_ciudad if m[7] is not None])))
+        sede = st.selectbox("Sede", sedes)
+
+        maquinas_sede = [m for m in maquinas_ciudad if m[7] == sede]
+
+        maquinas_dict = {
+            f"{m[1]} | {m[2]} | {m[3]}": m for m in maquinas_sede
+        }
+
+        seleccion = st.selectbox("Seleccione la máquina", list(maquinas_dict.keys()))
+
+        submitted = st.form_submit_button("Continuar")
+
+    if not submitted:
         return
 
-    maquinas_ciudad = [m for m in maquinas if m[8] == ciudad]
+    maquina = maquinas_dict.get(seleccion)
 
-    sedes = sorted(list(set([m[7] for m in maquinas_ciudad if m[7] is not None])))
-
-    sede = st.selectbox("Sede", ["Seleccione una opción"] + sedes)
-
-    if sede == "Seleccione una opción":
+    if not maquina:
+        st.error("Máquina no encontrada")
         return
-
-    maquinas_sede = [m for m in maquinas_ciudad if m[7] == sede]
-
-    maquinas_dict = {f"{m[1]} | {m[2]} | {m[3]}": m for m in maquinas_sede}
-
-    seleccion = st.selectbox("Seleccione la máquina", ["Seleccione una opción"] + list(maquinas_dict.keys()))
-
-    if seleccion == "Seleccione una opción":
-        return
-
-    maquina = maquinas_dict[seleccion]
 
     maquina_id = maquina[0]
     tipo_maquina = maquina[2]
 
     render_formulario(maquina_id, tipo_maquina, origen="Manual", modo="desktop")
+
 
 def render_formulario(maquina_id, tipo_maquina, origen, modo):
     
@@ -162,10 +185,11 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
 
     fecha = st.date_input("Fecha de inspección")
 
-    estructura = checklists_por_tipo.get(tipo_maquina, checklists_por_tipo["General"])
+    categorias = obtener_categorias_cached(tipo_maquina)
 
-    if isinstance(estructura, list):
-        estructura = {"General": estructura}
+    if not categorias:
+        st.warning("No hay checklist configurado para este tipo de máquina")
+        return
         
     if "form_checklist_key" not in st.session_state:
         st.session_state.form_checklist_key = 0
@@ -173,15 +197,17 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
     with st.form(f"form_checklist_{st.session_state.form_checklist_key}"):
 
         respuestas = {}
-        
-        total_items = sum(len(items) for items in estructura.values())
-        contador = 0
 
-        for categoria, items in estructura.items():
+        for cat in categorias:
 
-            st.markdown(f"### 🔧 {categoria}")
+            st.markdown(f"### 🔧 {cat['nombre']}")
 
-            for item in items:
+            items = obtener_items_cached(cat["id"])
+
+            for item_data in items:
+
+                item = item_data["nombre"]
+                item_id = item_data["id"]
 
                 if modo == "movil":
 
@@ -189,12 +215,15 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
                         item,
                         ["Cumple", "No cumple"],
                         horizontal=True,
-                        key=f"estado_{item}_{st.session_state.form_checklist_key}"
+                        key=f"estado_{item_id}_{st.session_state.form_checklist_key}"
                     )
 
                     observacion = ""
                     if estado == "No cumple":
-                        observacion = st.text_area("Observación", key=f"obs_{item}")
+                        observacion = st.text_area(
+                            "Observación",
+                            key=f"obs_{item_id}_{st.session_state.form_checklist_key}"
+                        )
 
                 else:
 
@@ -206,12 +235,12 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
                         "",
                         ["Conforme", "No conforme"],
                         horizontal=True,
-                        key=f"estado_{item}_{st.session_state.form_checklist_key}"
+                        key=f"estado_{item_id}_{st.session_state.form_checklist_key}"
                     )
 
                     observacion = col3.text_input(
                         "",
-                        key=f"obs_{item}_{st.session_state.form_checklist_key}"
+                        key=f"obs_{item_id}_{st.session_state.form_checklist_key}"
                     )
 
                 if modo == "movil":
@@ -221,14 +250,14 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
                     conforme = estado == "Conforme"
                     no_conforme = estado == "No conforme"
 
-                respuestas[item] = (conforme, no_conforme, observacion)
+                respuestas[item_id] = (item, conforme, no_conforme, observacion)
 
         submitted = st.form_submit_button("🚀 Guardar Checklist")
 
         if submitted:
             
             # VALIDAR OBSERVACIONES
-            for item, (conforme, no_conforme, obs) in respuestas.items():
+            for item_id, (item, conforme, no_conforme, obs) in respuestas.items():
                 if no_conforme and obs.strip() == "":
                     st.error(f"Debes escribir una observación para: {item}")
                     st.stop()
@@ -243,9 +272,9 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
 
             fallas_detectadas = 0
 
-            for item, (conforme, no_conforme, obs) in respuestas.items():
+            for item_id, (item, conforme, no_conforme, obs) in respuestas.items():
 
-                insertar_item_checklist(checklist_id, item, int(conforme), obs)
+                insertar_item_checklist(checklist_id, item, int(conforme), obs, item_id)
 
                 if no_conforme:
                     fallas_detectadas += 1

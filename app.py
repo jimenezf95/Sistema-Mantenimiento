@@ -82,12 +82,16 @@ from views.historiales import vista_historial_mantenimientos
 from views.hoja_vida import vista_hoja_vida
 from views.dashboard_costos import vista_dashboard_costos
 from views.usuarios import vista_usuarios
+from views.gestion_checklists import vista_gestion_checklists
 
 import streamlit as st
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from config_checklist import checklists_por_tipo
+from utils.migrar_checklist import migrar
+#migrar()
+
 
 # Definir tipos de máquina
 TIPOS_MAQUINA = [
@@ -218,8 +222,8 @@ if not modo_qr:
     with st.sidebar.expander("Mantenimiento"):
     
         if rol in ["admin", "tecnico", "operario"]:
-            if st.button("Checklists Diarias"):
-                st.session_state.opcion = "Checklists Diarias"
+            if st.button("Registro de Checklists"):
+                st.session_state.opcion = "Registro de Checklists"
 
         if rol in ["admin", "tecnico"]:
             if st.button("Solicitudes de Mantenimiento"):
@@ -238,6 +242,9 @@ if not modo_qr:
 
             if st.button("Historial de Solicitudes"):
                 st.session_state.opcion = "Historial de Solicitudes"
+                
+            if st.button("Gestión de Checklists"):
+                st.session_state.opcion = "Gestión de Checklists"
 
             if st.button("Hoja de Vida de Equipos"):
                 st.session_state.opcion = "Hoja de Vida de Equipos"
@@ -291,7 +298,7 @@ elif opcion == "Control de Traslados":
 
 
 # Bloque mantenimiento
-elif opcion == "Checklists Diarias":
+elif opcion == "Registro de Checklists":
     vista_checklists()
 
 elif opcion == "Solicitudes de Mantenimiento":
@@ -310,6 +317,9 @@ elif opcion == "Historial de Mantenimientos":
 
 elif opcion == "Hoja de Vida de Equipos":
     vista_hoja_vida()
+    
+elif opcion == "Gestión de Checklists":
+    vista_gestion_checklists()
 
 
 # Bloque Analisis    

@@ -25,6 +25,7 @@ from utils.qr_etiquetas import generar_qr_etiqueta
 from utils.pdf_qr import generar_qr_pdf
 
 from utils.config_url import BASE_URL
+from utils.export import generar_excel_maquinas
 
 # Listas de opciones para formularios
 TIPOS_MAQUINA = [
@@ -293,6 +294,18 @@ def vista_registro_sedes():
 
 def vista_inventario_maquinas():
     
+    if "confirmar_export_maquinas" not in st.session_state:
+        st.session_state.confirmar_export_maquinas = False
+
+    if "excel_maquinas" not in st.session_state:
+        st.session_state.excel_maquinas = None
+
+    if "nombre_archivo_maquinas" not in st.session_state:
+        st.session_state.nombre_archivo_maquinas = ""
+
+    if "texto_export_maquinas" not in st.session_state:
+        st.session_state.texto_export_maquinas = ""
+    
     ## Dashboard con conteo de máquinas por sede
     st.subheader("Distribución de maquinaria por sede")
     conteo = conteo_maquinas_por_sede()
@@ -349,6 +362,63 @@ def vista_inventario_maquinas():
             continue
 
         maquinas_filtradas.append(m)
+        
+    
+    st.divider()
+    st.subheader("📥 Exportar inventario")
+
+    if st.button("Exportar inventario de máquinas"):
+
+        if filtro_sede != "Todas" and filtro_tipo != "Todos":
+            texto = f"para {filtro_sede} - {filtro_tipo}"
+            nombre = f"inventario_{filtro_sede}_{filtro_tipo}"
+
+        elif filtro_sede != "Todas":
+            texto = f"para {filtro_sede}"
+            nombre = f"inventario_{filtro_sede}"
+
+        elif filtro_tipo != "Todos":
+            texto = f"para {filtro_tipo}"
+            nombre = f"inventario_{filtro_tipo}"
+
+        else:
+            texto = "completo"
+            nombre = "inventario_completo"
+
+        nombre = nombre.replace(" ", "_").replace("-", "_")
+
+        st.session_state.confirmar_export_maquinas = True
+        st.session_state.texto_export_maquinas = texto
+        st.session_state.nombre_archivo_maquinas = nombre
+        
+    if st.session_state.confirmar_export_maquinas:
+
+        st.warning(
+            f"¿Desea descargar el inventario de máquinas {st.session_state.texto_export_maquinas}?"
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("✅ Descargar inventario"):
+
+                st.session_state.excel_maquinas = generar_excel_maquinas(maquinas_filtradas)
+                st.session_state.confirmar_export_maquinas = False
+
+        with col2:
+            if st.button("❌ Cancelar"):
+                st.session_state.confirmar_export_maquinas = False
+                st.rerun()
+        
+    if st.session_state.excel_maquinas:
+
+        st.download_button(
+            label="⬇️ Descargar Excel de inventario",
+            data=st.session_state.excel_maquinas,
+            file_name=f"{st.session_state.nombre_archivo_maquinas}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    
 
     st.subheader("Máquinas registradas")
 
