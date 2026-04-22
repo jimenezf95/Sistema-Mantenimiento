@@ -2305,7 +2305,7 @@ def obtener_alertas():
     for m in cursor.fetchall():
         alertas.append(f"🔴 {m[1]} {m[0]} fuera de servicio")
 
-    # 2️⃣ Máquinas con muchas fallas (ej: más de 5)
+    # 2️⃣ Máquinas con muchas fallas
     cursor.execute("""
     SELECT m.numero_equipo, m.tipo, SUM(s.veces_detectada) as total
     FROM solicitudes_mantenimiento s
@@ -2318,7 +2318,7 @@ def obtener_alertas():
     for m in cursor.fetchall():
         alertas.append(f"⚠️ {m[1]} {m[0]} con {m[2]} fallas acumuladas")
 
-    # 3️⃣ Máquinas sin mantenimiento reciente (ej: 30 días)
+    # 3️⃣ Máquinas sin mantenimiento reciente
     cursor.execute("""
     SELECT m.numero_equipo, m.tipo, MAX(mt.fecha)
     FROM maquinas m
@@ -2326,22 +2326,23 @@ def obtener_alertas():
     GROUP BY m.id
     """)
 
-    from datetime import datetime
+    from datetime import datetime, date
 
-    hoy = datetime.today()
+    hoy = date.today()  # 🔥 usamos date
 
     for m in cursor.fetchall():
 
         fecha = m[2]
 
         if fecha:
-            fecha_dt = fecha
-            dias = (hoy - fecha_dt).days
+            # 🔥 convertir SIEMPRE a date
+            if isinstance(fecha, datetime):
+                fecha = fecha.date()
+
+            dias = (hoy - fecha).days
 
             if dias > 30:
                 alertas.append(f"🟡 {m[1]} {m[0]} sin mantenimiento hace {dias} días")
-        #else:
-            #alertas.append(f"🟡 {m[1]} {m[0]} sin historial de mantenimiento")
 
     conn.close()
 

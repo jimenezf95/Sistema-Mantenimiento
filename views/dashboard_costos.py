@@ -21,8 +21,12 @@ def vista_dashboard_costos():
     col1.metric("Total invertido", f"${int(total):,}".replace(",", "."))
     col2.metric("Promedio costo", f"${int(promedio):,}".replace(",", "."))
     col3.metric("Registros", cantidad)
-    col4.metric("Último gasto", ultima_fecha)
-
+    if ultima_fecha:
+        ultima_fecha_str = ultima_fecha.strftime("%Y-%m-%d")
+    else:
+        ultima_fecha_str = "Sin datos"
+    col4.metric("Último gasto", ultima_fecha_str)
+    
     st.divider()    
 
     st.subheader("📅 Tendencia de costos por mes")
@@ -35,12 +39,16 @@ def vista_dashboard_costos():
 
         df_mes = pd.DataFrame(datos_mes, columns=["Mes", "Total"])
 
-        # Convertir fecha
         df_mes["Mes"] = pd.to_datetime(df_mes["Mes"])
-        df_mes = df_mes.sort_values(by="Mes")
 
-        # Formato texto bonito
-        df_mes["Mes_str"] = df_mes["Mes"].dt.strftime("%Y-%m")
+        # 🔥 QUEDARSE SOLO CON AÑO-MES
+        df_mes["Mes_str"] = df_mes["Mes"].dt.strftime("%Y-%m-%d")
+
+        # 🔥 Convertir a string limpio
+        df_mes = df_mes.sort_values(by="Mes")
+        
+        df_mes = df_mes[["Mes_str", "Total"]].copy()
+        df_mes = df_mes.groupby("Mes_str")["Total"].sum().reset_index()
 
         # 🔥 Crear gráfica
         fig = px.line(
@@ -50,6 +58,20 @@ def vista_dashboard_costos():
             markers=True,  # 🔥 puntos
             title="Evolución de costos"
         )
+        fig.update_xaxes(type="category")
+        
+        fig.update_layout(
+            xaxis=dict(
+                tickangle=-45  # 🔥 rota etiquetas
+            )
+        )
+        
+        fig.update_layout(
+            yaxis=dict(
+                tickprefix="$",
+                tickformat=",.0f"  # 🔥 separador de miles sin decimales
+            )
+        )
 
         # 🔥 Formato hover (MUY IMPORTANTE)
         fig.update_traces(
@@ -58,7 +80,7 @@ def vista_dashboard_costos():
 
         # 🔥 Mejorar diseño
         fig.update_layout(
-            xaxis_title="Mes",
+            xaxis_title="Fecha",
             yaxis_title="Costo",
             hovermode="x unified"
         )
@@ -70,11 +92,8 @@ def vista_dashboard_costos():
         fig.update_traces(line=dict(color="#1f77b4", width=3))
 
         # 🔥 Mostrar
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     
-    #for _, row in df_mes.iterrows():
-        #total_fmt = f"{int(row['Total']):,}".replace(",", ".")
-        #st.write(f"{row['Mes']} — ${total_fmt}")
     
     st.divider()    
     # =========================

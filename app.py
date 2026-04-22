@@ -83,6 +83,7 @@ from views.hoja_vida import vista_hoja_vida
 from views.dashboard_costos import vista_dashboard_costos
 from views.usuarios import vista_usuarios
 from views.gestion_checklists import vista_gestion_checklists
+from views.inicio import vista_inicio
 
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -197,7 +198,8 @@ if not modo_qr:
     # INICIO
     # -----------------------------
     if st.sidebar.button("🏠 Inicio"):
-        st.session_state.opcion = "Inicio" 
+        if rol in ["admin", "tecnico"]:
+            st.session_state.opcion = "Inicio" 
     # -----------------------------
     # MAQUINARIA
     # -----------------------------   
@@ -270,18 +272,10 @@ if not modo_qr:
 opcion = st.session_state.opcion
 
 if opcion == "Inicio":
-    st.header("Bienvenido al sistema")
 
-    st.write("Este sistema permite gestionar el mantenimiento de maquinaria de la empresa.")
-
-    st.subheader("Funciones principales")
-
-    st.write("✔ Registro de maquinaria")
-    st.write("✔ Registro de checklists diarias")
-    st.write("✔ Registro de mantenimientos")
-    st.write("✔ Control de traslado entre sedes")
-    st.write("✔ Análisis de fallas")
-    st.write("✔ Historial de mantenimiento por máquina")
+    st.write("SGM para el mantenimiento y registro de maquinaria.")
+    
+    vista_inicio()
     
 # Bloque Maquinaría
 elif opcion == "Registro de Maquinaria":

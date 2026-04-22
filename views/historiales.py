@@ -628,23 +628,23 @@ def vista_historial_mantenimientos():
         
         modo = st.radio(
             "Modo de búsqueda",
-            ["Filtrar por máquina", "Ver todos los mantenimientos"]
+            ["Filtrar por tipo de máquina", "Ver todos los mantenimientos"]
         )
         
         #-----------------------------------
-        if modo == "Filtrar por máquina":
+        if modo == "Filtrar por tipo de máquina":
 
             maquinas = obtener_maquinas()
             
             if not maquinas:
-                st.warning("No hay máquinas registradas.")
+                st.warning("No hay máquinas registradas de este tipo.")
                 return
 
             # FILTRAR POR TIPO
             tipos = sorted(list(set([m[2] for m in maquinas])))
             tipo_sel_edit = st.selectbox("Tipo de máquina", tipos, key="tipo_edit")
 
-            maquinas_tipo = [m for m in maquinas if m[2] == tipo_sel]
+            maquinas_tipo = [m for m in maquinas if m[2] == tipo_sel_edit]
 
             # FILTRAR POR EQUIPO
             maquinas_dict = {
@@ -659,7 +659,7 @@ def vista_historial_mantenimientos():
 
                 maquina_id = maquinas_dict[maquina_sel]
             else:
-                st.info("No hay máquinas de este tipo.")
+                st.info("No hay máquinas registradasde este tipo.")
                 return
 
             # 🔥 AQUÍ ESTÁ LA CLAVE

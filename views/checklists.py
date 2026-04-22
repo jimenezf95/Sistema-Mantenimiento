@@ -31,7 +31,7 @@ from database import (
 
 
 def vista_checklists():
-
+    
     params = st.query_params
     maquina_id_qr = None
 
@@ -136,6 +136,7 @@ def vista_checklist_qr(maquina_id_qr):
     render_formulario(maquina_id_qr, tipo_maquina, origen="QR", modo="movil")
 
 def vista_checklist_manual():
+    st.subheader("Crear registro manual de Checklist")
 
     maquinas = obtener_maquinas_cached()
 
