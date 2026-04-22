@@ -125,14 +125,18 @@ crear_tabla_usuarios()
 #crear_usuario("Admin", "21100", "admin")
 
 
-# =========================
-# LOGIN
-# =========================
 
+params = st.query_params
+modo_qr = "maquina_id" in params
+
+
+# =========================
+# LOGIN (SOLO SI NO ES QR)
+# =========================
 if "login" not in st.session_state:
     st.session_state.login = False
 
-if not st.session_state.login:
+if not st.session_state.login and not modo_qr:
 
     st.title("🔐 Iniciar sesión")
 
@@ -155,13 +159,6 @@ if not st.session_state.login:
     st.stop()
     
 
-
-
-
-params = st.query_params
-modo_qr = "maquina_id" in params
-
-
 # Título página principal
 st.title("Sistema de Gestión de Mantenimiento de Maquinaria")
 
@@ -173,10 +170,9 @@ if modo_qr:
     """, unsafe_allow_html=True)
 
 if modo_qr:
-    st.session_state.opcion = "Checklists Diarias"
+    opcion = "Registro de Checklists"
 else:
-    if "opcion" not in st.session_state:
-        st.session_state.opcion = "Inicio"
+    opcion = st.session_state.get("opcion", "Inicio")
 
 
         
@@ -268,8 +264,6 @@ if not modo_qr:
             if st.button("Gestión de Usuarios"):
                 st.session_state.opcion = "Gestión de Usuarios"
 
-
-opcion = st.session_state.opcion
 
 if opcion == "Inicio":
 

@@ -4,7 +4,7 @@
 # Claro-3899 
 #BASE_URL = "http://192.168.1.14:8501"
 
-ACA_BOGOTA = "http://192.168.1.17:8501"
+#ACA_BOGOTA = "http://192.168.1.17:8501"
 
 # CASA
 # BASE_URL = "http://192.168.1.10:8501" 
@@ -17,5 +17,7 @@ import streamlit as st
 
 BASE_URL = st.secrets.get(
     "BASE_URL",
-    ACA_BOGOTA
 )
+
+if not BASE_URL:
+    BASE_URL = "https://sistema-mantenimiento-fpt8bvtkyaarj6c6q68jyo.streamlit.app/"

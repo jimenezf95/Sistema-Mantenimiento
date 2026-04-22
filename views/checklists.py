@@ -31,13 +31,13 @@ from database import (
 
 
 def vista_checklists():
-    
+
     params = st.query_params
     maquina_id_qr = None
 
     if "maquina_id" in params:
         try:
-            valor = params["maquina_id"][0]
+            valor = params["maquina_id"]
             if isinstance(valor, list):
                 valor = valor[0]
             maquina_id_qr = int(valor)
@@ -56,9 +56,8 @@ def vista_checklist_qr(maquina_id_qr):
 
         resumen = st.session_state.get("resumen_checklist", {})
         maquinas = obtener_maquinas_cached()
-        #maquina = next((m for m in maquinas if m[0] == maquina_id), None)
-        maquinas_dict = {m[0]: m for m in maquinas}
-        maquina = maquinas_dict.get(maquina_id)
+        maquinas_dict = {int(m[0]): m for m in maquinas}
+        maquina = maquinas_dict.get(maquina_id_qr)
         
         if not maquina:
             st.error("Máquina no encontrada")
