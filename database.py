@@ -1,6 +1,6 @@
 import psycopg2
 import streamlit as st
-
+from datetime import datetime, date
     
 def conectar():
     return psycopg2.connect(st.secrets["DATABASE_URL"])
@@ -2326,7 +2326,7 @@ def obtener_alertas():
     GROUP BY m.id
     """)
 
-    from datetime import datetime, date
+    
 
     hoy = date.today()  # 🔥 usamos date
 
