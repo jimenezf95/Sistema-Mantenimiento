@@ -169,3 +169,44 @@ def generar_excel_maquinas(maquinas):
     return output.getvalue()
 
 
+def generar_excel_operarios_control(data):
+
+    columnas = [
+        "Nombre",
+        "Apellido",
+        "Cédula"
+    ]
+
+    df = pd.DataFrame(data, columns=columnas)
+
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Operarios Pendientes')
+
+    return output.getvalue()
+
+
+def generar_excel_historial_operarios(data):
+
+    columnas = [
+        "Fecha",
+        "Nombre",
+        "Apellido",
+        "Cédula",
+        "Tipo Máquina",
+        "Equipo",
+        "Sede",
+        "Ciudad",
+        "Fallas"
+    ]
+
+    df = pd.DataFrame(data, columns=columnas)
+
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Historial')
+
+    return output.getvalue()
+

@@ -64,7 +64,11 @@ from database import (
     obtener_costos_dashboard,
     #Usuarios
     validar_usuario,
+    crear_tabla_operarios,
+    agregar_columna_operario,
+    agregar_sede_operario
 )
+
 
 from views.maquinaria import (
     vista_registro_maquinaria,
@@ -84,6 +88,8 @@ from views.dashboard_costos import vista_dashboard_costos
 from views.usuarios import vista_usuarios
 from views.gestion_checklists import vista_gestion_checklists
 from views.inicio import vista_inicio
+from views.operarios import vista_gestion_operarios
+from views.operarios import vista_historial_operarios
 
 import streamlit as st
 import matplotlib.pyplot as plt
@@ -122,6 +128,9 @@ st.set_page_config(
 
 crear_tablas()
 crear_tabla_usuarios()
+crear_tabla_operarios()
+agregar_columna_operario()
+agregar_sede_operario()
 #crear_usuario("Admin", "21100", "admin")
 
 
@@ -263,6 +272,15 @@ if not modo_qr:
         if rol == "admin":
             if st.button("Gestión de Usuarios"):
                 st.session_state.opcion = "Gestión de Usuarios"
+            
+            if st.button("Gestión de Operarios"):
+                st.session_state.opcion = "Gestión de Operarios"
+                
+        if rol in ["admin", "tecnico"]:
+            if st.button("Historial de Operarios"):
+                st.session_state.opcion = "Historial de Operarios"
+                
+            
 
 
 if opcion == "Inicio":
@@ -319,5 +337,11 @@ elif opcion == "Dashboard de Costos":
     
 elif opcion == "Gestión de Usuarios":
     vista_usuarios()
+    
+elif opcion == "Gestión de Operarios":
+    vista_gestion_operarios()
+    
+elif opcion == "Historial de Operarios":
+    vista_historial_operarios()
 
 

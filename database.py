@@ -7,8 +7,15 @@ def conectar():
 
 import unicodedata
 import re
-
 import hashlib
+
+def limpiar_cedula(cedula):
+    return re.sub(r'\D', '', cedula)
+
+def limpiar_nombre(texto):
+    texto = texto.strip().lower()
+    texto = re.sub(r'\s+', ' ', texto)  # quitar espacios extra
+    return texto.title()
 
 def normalizar_item(texto):
     texto = texto.lower()
@@ -449,6 +456,16 @@ def conteo_maquinas_por_sede():
 
     return datos
 
+def obtener_tipos_maquina():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT DISTINCT tipo FROM maquinas ORDER BY tipo")
+    data = [row[0] for row in cursor.fetchall()]
+
+    conn.close()
+    return data
+
 #---------------------
 #SEDES
 def insertar_sede(nombre, ciudad):
@@ -480,6 +497,16 @@ def obtener_sedes():
     conn.close()
 
     return datos
+
+def obtener_sedes_diff():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT DISTINCT nombre FROM sedes ORDER BY nombre")
+    data = [row[0] for row in cursor.fetchall()]
+
+    conn.close()
+    return data
 
 def sede_tiene_maquinas(sede_id):
 
@@ -585,16 +612,16 @@ def obtener_ultimos_traslados(limit=10):
 
 #---------------------
 # REGISTRO DE CHECKLISTS
-def insertar_checklist(maquina_id, fecha, origen):
+def insertar_checklist(maquina_id, fecha, origen, operario_id=None):
 
     conn = conectar()
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO checklists (maquina_id, fecha, origen)
-        VALUES (%s, %s, %s)
+        INSERT INTO checklists (maquina_id, fecha, origen, operario_id)
+        VALUES (%s, %s, %s, %s)
         RETURNING id
-    """, (maquina_id, fecha, origen))
+    """, (maquina_id, fecha, origen, operario_id))
 
     checklist_id = cursor.fetchone()[0]
 
@@ -1086,7 +1113,15 @@ def obtener_checklists_export(fecha_inicio=None, fecha_fin=None, tipo_maquina=No
     conn.close()
     return resultado
 
-
+def existe_checklist_dia(maquina_id, fecha):
+    query = """
+        SELECT 1
+        FROM checklists
+        WHERE maquina_id = %s AND fecha = %s
+        LIMIT 1
+    """
+    result = ejecutar_query(query, (maquina_id, fecha))
+    return result is not None
 
 
 
@@ -1538,9 +1573,16 @@ def registrar_mantenimiento(maquina_id, fecha, tecnico, recibido_por, observacio
 
         conn.commit()
         actualizar_estado_por_solicitudes(maquina_id)
+        
+        return mantenimiento_id
+    
+    except Exception as e:
+        conn.rollback()
+        print("Error al registrar mantenimiento:", e)
+        return None
+    
     finally:
         conn.close()
-        return mantenimiento_id
          
 def obtener_mantenimientos_paginados(pagina, registros_por_pagina=15):
 
@@ -2508,6 +2550,249 @@ def obtener_costos_por_mes():
     conn.close()
 
     return datos
+
+#----------------------------
+# OPERARIOS
+def crear_tabla_operarios():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS operarios (
+        id SERIAL PRIMARY KEY,
+        cedula TEXT UNIQUE,
+        nombre TEXT,
+        apellido TEXT
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+    
+def agregar_columna_operario():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("ALTER TABLE checklists ADD COLUMN operario_id INTEGER")
+    except:
+        pass
+
+    conn.commit()
+    conn.close()
+    
+def agregar_sede_operario():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+        ALTER TABLE operarios ADD COLUMN sede_id INTEGER
+        """)
+        
+    except Exception as e:
+        None
+
+    conn.commit()
+    conn.close()
+    
+def obtener_operario_por_cedula(cedula):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT 
+        o.id,
+        o.nombre,
+        o.apellido,
+        s.nombre,
+        s.ciudad
+    FROM operarios o
+    LEFT JOIN sedes s ON o.sede_id = s.id
+    WHERE o.cedula = %s
+    """, (cedula,))
+
+    resultado = cursor.fetchone()
+    conn.close()
+
+    return resultado
+
+
+def registrar_operario(cedula, nombre, apellido, sede):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    try:
+        cedula = limpiar_cedula(cedula)
+        nombre = limpiar_nombre(nombre)
+        apellido = limpiar_nombre(apellido)
+        sede = sede.strip()
+        
+        if not cedula:
+            return False, "La cédula no es válida"
+
+        cursor.execute("""
+        INSERT INTO operarios (cedula, nombre, apellido, sede_id)
+        VALUES (%s, %s, %s,
+            (SELECT id FROM sedes WHERE nombre = %s)
+        )
+        """, (cedula, nombre, apellido, sede))
+
+        conn.commit()
+        return True, "Operario registrado correctamente"
+
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        return False, "La cédula ya está registrada"
+
+    except Exception as e:
+        conn.rollback()
+        return False, str(e)
+
+    finally:
+        conn.close()
+        
+        
+def obtener_historial_operarios(filtro_sede=None, filtro_tipo=None):
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    query = """
+    SELECT 
+        c.fecha,
+        o.nombre,
+        o.apellido,
+        o.cedula,
+        m.tipo,
+        m.numero_equipo,
+        s.nombre,
+        s.ciudad,
+        (
+            SELECT COUNT(*) 
+            FROM checklist_items ci 
+            WHERE ci.checklist_id = c.id AND ci.cumple = 0
+        ) as fallas
+    FROM checklists c
+    LEFT JOIN operarios o ON c.operario_id = o.id
+    LEFT JOIN maquinas m ON c.maquina_id = m.id
+    LEFT JOIN sedes s ON m.sede_id = s.id
+    WHERE c.operario_id IS NOT NULL
+    """
+
+    params = []
+
+    # 🔹 filtro sede
+    if filtro_sede and filtro_sede != "Todas":
+        query += " AND s.nombre = %s"
+        params.append(filtro_sede)
+
+    # 🔹 filtro tipo máquina
+    if filtro_tipo and filtro_tipo != "Todos":
+        query += " AND m.tipo = %s"
+        params.append(filtro_tipo)
+
+    query += " ORDER BY c.fecha DESC"
+
+    cursor.execute(query, tuple(params))
+    data = cursor.fetchall()
+
+    conn.close()
+    return data
+
+def obtener_control_diario_operarios():
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT COUNT(*) FROM operarios
+    """)
+    total_operarios = cursor.fetchone()[0]
+
+    cursor.execute("""
+    SELECT COUNT(DISTINCT operario_id)
+    FROM checklists
+    WHERE fecha = CURRENT_DATE
+    AND operario_id IS NOT NULL
+    """)
+    operarios_activos = cursor.fetchone()[0]
+
+    conn.close()
+
+    return total_operarios, operarios_activos
+
+def obtener_operarios_pendientes():
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT o.nombre, o.apellido, o.cedula
+    FROM operarios o
+    WHERE o.id NOT IN (
+        SELECT DISTINCT operario_id
+        FROM checklists
+        WHERE fecha = CURRENT_DATE
+        AND operario_id IS NOT NULL
+    )
+    """)
+
+    data = cursor.fetchall()
+    conn.close()
+
+    return data
+
+def obtener_kpi_por_sede():
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT 
+        s.nombre,
+        COUNT(DISTINCT c.operario_id) as activos
+    FROM sedes s
+    LEFT JOIN maquinas m ON s.id = m.sede_id
+    LEFT JOIN checklists c 
+        ON m.id = c.maquina_id 
+        AND c.fecha = CURRENT_DATE
+        AND c.operario_id IS NOT NULL
+    GROUP BY s.nombre
+    ORDER BY s.nombre
+    """)
+
+    data = cursor.fetchall()
+    conn.close()
+
+    return data
+
+def obtener_kpi_real_por_sede():
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT 
+        s.nombre,
+        COUNT(DISTINCT o.id) as total_operarios,
+        COUNT(DISTINCT c.operario_id) as activos
+    FROM sedes s
+    LEFT JOIN operarios o ON o.sede_id = s.id
+    LEFT JOIN checklists c 
+        ON o.id = c.operario_id 
+        AND c.fecha = CURRENT_DATE
+    GROUP BY s.nombre
+    ORDER BY s.nombre
+    """)
+
+    data = cursor.fetchall()
+    conn.close()
+
+    return data
+
 
 
 

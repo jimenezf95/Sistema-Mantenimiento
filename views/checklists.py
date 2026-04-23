@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import date
 
 @st.cache_data(ttl=60)
 def obtener_maquinas_cached():
@@ -52,6 +53,15 @@ def vista_checklists():
 
 def vista_checklist_qr(maquina_id_qr):
     
+    if "ultima_maquina_qr" not in st.session_state:
+        st.session_state.ultima_maquina_qr = None
+
+    if st.session_state.ultima_maquina_qr != maquina_id_qr:
+        st.session_state["checklist_completada"] = False
+        st.session_state["resumen_checklist"] = {}
+        st.session_state.ultima_maquina_qr = maquina_id_qr
+    
+    resumen = st.session_state.get("resumen_checklist", {})
     if st.session_state.get("checklist_completada"):
 
         resumen = st.session_state.get("resumen_checklist", {})
@@ -129,14 +139,20 @@ def vista_checklist_qr(maquina_id_qr):
         <b>{maquina[2]}</b><br>
         {maquina[3]}<br>
         {maquina[8]} - {maquina[7]}
+        
+        <br><b>Realizado por:</b> {resumen.get("operario", "N/A")}
     </div>
     """, unsafe_allow_html=True)
 
     render_formulario(maquina_id_qr, tipo_maquina, origen="QR", modo="movil")
 
+
 def vista_checklist_manual():
     st.subheader("Crear registro manual de Checklist")
 
+    if "maquina_seleccionada" not in st.session_state:
+        st.session_state.maquina_seleccionada = None
+    
     maquinas = obtener_maquinas_cached()
 
     if not maquinas:
@@ -163,28 +179,37 @@ def vista_checklist_manual():
 
         submitted = st.form_submit_button("Continuar")
 
-    if not submitted:
+    if submitted:
+        maquina = maquinas_dict.get(seleccion)
+        
+        if not maquina:
+            st.error("Máquina no encontrada")
+            return
+        
+        st.session_state.maquina_seleccionada = maquina
+        
+    if st.session_state.maquina_seleccionada is None:
         return
 
-    maquina = maquinas_dict.get(seleccion)
-
-    if not maquina:
-        st.error("Máquina no encontrada")
-        return
+    maquina = st.session_state.maquina_seleccionada
 
     maquina_id = maquina[0]
     tipo_maquina = maquina[2]
 
     render_formulario(maquina_id, tipo_maquina, origen="Manual", modo="desktop")
 
-
+    
 def render_formulario(maquina_id, tipo_maquina, origen, modo):
     
     if "form_checklist_key" not in st.session_state:
         st.session_state.form_checklist_key = 0
 
-    fecha = st.date_input("Fecha de inspección")
-
+    if origen == "QR":
+        fecha = date.today()
+        
+    else:
+        fecha = st.date_input("Fecha de inspección")
+    
     categorias = obtener_categorias_cached(tipo_maquina)
 
     if not categorias:
@@ -193,6 +218,30 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
         
     if "form_checklist_key" not in st.session_state:
         st.session_state.form_checklist_key = 0
+        
+    
+    operario_id = None
+    operario_cedula = None
+
+    if modo == "movil":
+
+        st.markdown("### 👷 Identificación del operario")
+
+        cedula = st.text_input("Ingrese su cédula", key="cedula_operario")
+
+        if cedula:
+
+            operario = obtener_operario_por_cedula(cedula)
+
+            if operario:
+                operario_id = operario[0]
+                operario_nombre = f"{operario[0]} {operario[1]}"
+                st.success(f"Operario: {operario_nombre}")
+            else:
+                st.error("Operario no encontrado")
+    
+    
+    
 
     with st.form(f"form_checklist_{st.session_state.form_checklist_key}"):
 
@@ -256,16 +305,33 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
 
         if submitted:
             
+            if modo == "movil" and not operario_nombre:
+                st.error("Debe ingresar una cédula válida antes de guardar")
+                st.stop()
+            
             # VALIDAR OBSERVACIONES
             for item_id, (item, conforme, no_conforme, obs) in respuestas.items():
                 if no_conforme and obs.strip() == "":
-                    st.error(f"Debes escribir una observación para: {item}")
+                    st.error(f"Debe escribir una observación para: {item}")
                     st.stop()
 
+            
+            
+
+            hoy = fecha.isoformat()  # ya usas fecha del formulario
+
+            if origen == "QR":
+                existe = existe_checklist_dia(maquina_id, hoy)
+
+                if existe:
+                    st.error("⚠️ Ya existe un registro para el día de hoy")
+                    st.stop()
+            
             checklist_id = insertar_checklist(
                 maquina_id,
                 fecha.isoformat(),
-                origen
+                origen,
+                operario_id if modo == "movil" else None
             )
 
             st.session_state["ultima_checklist"] = checklist_id
@@ -296,7 +362,7 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
             st.session_state["resumen_checklist"] = {
                 "fallas": fallas_detectadas,
                 "maquina_id": maquina_id,
-                
+                "operario": operario_nombre if modo == "movil" else "N/A"
             }
             
             #st.session_state.checklist_msg = f"Checklist guardada exitosamente. Fallas detectadas: {fallas_detectadas}"
