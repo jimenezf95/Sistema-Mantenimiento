@@ -1114,14 +1114,23 @@ def obtener_checklists_export(fecha_inicio=None, fecha_fin=None, tipo_maquina=No
     return resultado
 
 def existe_checklist_dia(maquina_id, fecha):
-    query = """
-        SELECT 1
-        FROM checklists
-        WHERE maquina_id = %s AND fecha = %s
-        LIMIT 1
-    """
-    result = ejecutar_query(query, (maquina_id, fecha))
-    return result is not None
+
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT 1
+    FROM checklists
+    WHERE maquina_id = %s
+    AND fecha = %s
+    LIMIT 1
+    """, (maquina_id, fecha))
+
+    existe = cursor.fetchone()
+
+    conn.close()
+
+    return existe is not None
 
 
 
