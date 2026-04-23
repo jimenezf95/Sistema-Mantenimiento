@@ -27,7 +27,9 @@ from database import (
     insertar_solicitud,
     actualizar_estado_por_solicitudes, 
     obtener_categorias,
-    obtener_items
+    obtener_items,
+    obtener_operario_por_cedula,
+    existe_checklist_dia
 )
 
 
