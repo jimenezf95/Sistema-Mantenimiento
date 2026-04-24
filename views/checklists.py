@@ -236,7 +236,7 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
 
             if operario:
                 operario_id = operario[0]
-                operario_nombre = f"{operario[0]} {operario[1]}"
+                operario_nombre = f"{operario[1]} {operario[2]}"
                 st.success(f"Operario: {operario_nombre}")
             else:
                 st.error("Operario no encontrado")
