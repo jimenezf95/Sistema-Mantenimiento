@@ -198,10 +198,15 @@ def generar_excel_historial_operarios(data):
         "Equipo",
         "Sede",
         "Ciudad",
-        "Fallas"
+        "Fallas",
+        "Cumplió"
     ]
 
     df = pd.DataFrame(data, columns=columnas)
+    df["Cumplió"] = df["Cumplió"].map({
+        "Sí": "✅",
+        "No": "❌"
+    })
 
     output = BytesIO()
 

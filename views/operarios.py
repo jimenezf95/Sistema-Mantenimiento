@@ -150,7 +150,7 @@ def vista_historial_operarios():
     if not data:
         st.warning("No hay registros")
         return
-
+    st.write("Registros encontrados: " + str(len(data)))
     df = pd.DataFrame(data, columns=[
         "Fecha",
         "Nombre",
@@ -160,10 +160,46 @@ def vista_historial_operarios():
         "Equipo",
         "Sede",
         "Ciudad",
-        "Fallas"
+        "Fallas",
+        "Cumplió"
     ])
+    
+    df["Cumplió"] = df["Cumplió"].map({
+        "Sí": "✅",
+        "No": "❌"
+    })
 
-    st.dataframe(df, use_container_width=True)
+    # =========================
+    # PAGINACIÓN
+    # =========================
+    registros_por_pagina = 15
+
+    if "pagina_historial" not in st.session_state:
+        st.session_state.pagina_historial = 1
+
+    total_registros = len(df)
+    total_paginas = (total_registros // registros_por_pagina) + (1 if total_registros % registros_por_pagina > 0 else 0)
+
+    inicio = (st.session_state.pagina_historial - 1) * registros_por_pagina
+    fin = inicio + registros_por_pagina
+
+    df_pagina = df.iloc[inicio:fin]
+
+    st.dataframe(df_pagina, use_container_width=True)
+
+    # 🔘 CONTROLES
+    col1, col2, col3 = st.columns([1,2,1])
+
+    with col1:
+        if st.button("⬅️ Anterior") and st.session_state.pagina_historial > 1:
+            st.session_state.pagina_historial -= 1
+
+    with col3:
+        if st.button("Siguiente ➡️") and st.session_state.pagina_historial < total_paginas:
+            st.session_state.pagina_historial += 1
+
+    with col2:
+        st.write(f"Página {st.session_state.pagina_historial} de {total_paginas}")
 
     # =========================
     # EXPORTAR
@@ -183,23 +219,52 @@ def vista_historial_operarios():
     st.divider()
     st.subheader("🚨 Operarios pendientes hoy")
 
-    pendientes_data = obtener_operarios_pendientes()
+    pendientes_data = obtener_operarios_pendientes(filtro_sede)
 
     if pendientes_data:
 
         df_pend = pd.DataFrame(pendientes_data, columns=[
-            "Nombre", "Apellido", "Cédula"
+            "Nombre", "Apellido", "Cédula", "Sede"
         ])
 
-        st.dataframe(df_pend, use_container_width=True)
+        # =========================
+        # PAGINACIÓN PENDIENTES
+        # =========================
+        registros_por_pagina = 10
 
-        archivo_pend = generar_excel_operarios_control(pendientes_data)
+        if "pagina_pendientes" not in st.session_state:
+            st.session_state.pagina_pendientes = 1
 
-        st.download_button(
-            "📥 Descargar pendientes",
-            archivo_pend,
-            "pendientes_operarios.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        total_registros = len(df_pend)
+        total_paginas = (total_registros // registros_por_pagina) + (
+            1 if total_registros % registros_por_pagina > 0 else 0
         )
+
+        # evitar página inválida
+        if st.session_state.pagina_pendientes > total_paginas:
+            st.session_state.pagina_pendientes = 1
+
+        inicio = (st.session_state.pagina_pendientes - 1) * registros_por_pagina
+        fin = inicio + registros_por_pagina
+
+        df_pagina = df_pend.iloc[inicio:fin]
+
+        st.dataframe(df_pagina, use_container_width=True)
+
+        # 🔘 CONTROLES
+        col1, col2, col3 = st.columns([1,2,1])
+
+        with col1:
+            if st.button("⬅️ Anterior", key="prev_pend") and st.session_state.pagina_pendientes > 1:
+                st.session_state.pagina_pendientes -= 1
+
+        with col3:
+            if st.button("Siguiente ➡️", key="next_pend") and st.session_state.pagina_pendientes < total_paginas:
+                st.session_state.pagina_pendientes += 1
+
+        with col2:
+            st.write(f"Página {st.session_state.pagina_pendientes} de {total_paginas}")
+
+        
     else:
         st.success("Todos los operarios cumplieron hoy")

@@ -2683,7 +2683,11 @@ def obtener_historial_operarios(filtro_sede=None, filtro_tipo=None):
             SELECT COUNT(*) 
             FROM checklist_items ci 
             WHERE ci.checklist_id = c.id AND ci.cumple = 0
-        ) as fallas
+        ) as fallas,
+        CASE 
+            WHEN c.id IS NOT NULL THEN 'Sí'
+            ELSE 'No'
+        END as cumplio
     FROM checklists c
     LEFT JOIN operarios o ON c.operario_id = o.id
     LEFT JOIN maquinas m ON c.maquina_id = m.id
@@ -2733,25 +2737,35 @@ def obtener_control_diario_operarios():
 
     return total_operarios, operarios_activos
 
-def obtener_operarios_pendientes():
+def obtener_operarios_pendientes(filtro_sede=None):
 
     conn = conectar()
     cursor = conn.cursor()
 
-    cursor.execute("""
-    SELECT o.nombre, o.apellido, o.cedula
+    query = """
+    SELECT o.nombre, o.apellido, o.cedula, s.nombre
     FROM operarios o
+    LEFT JOIN sedes s ON o.sede_id = s.id
     WHERE o.id NOT IN (
         SELECT DISTINCT operario_id
         FROM checklists
         WHERE fecha = CURRENT_DATE
         AND operario_id IS NOT NULL
     )
-    """)
+    """
 
+    params = []
+
+    if filtro_sede and filtro_sede != "Todas":
+        query += " AND s.nombre = %s"
+        params.append(filtro_sede)
+
+    query += " ORDER BY o.nombre"
+
+    cursor.execute(query, tuple(params))
     data = cursor.fetchall()
-    conn.close()
 
+    conn.close()
     return data
 
 def obtener_kpi_por_sede():
