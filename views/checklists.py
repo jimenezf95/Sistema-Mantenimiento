@@ -93,6 +93,7 @@ def vista_checklist_qr(maquina_id_qr):
             {maquina[3]}<br>
             {maquina[8]} - {maquina[7]}<br>
             <b>Fallas detectadas:</b> {resumen.get("fallas", 0)}
+            <br><b>Realizado por:</b> {resumen.get("operario", "N/A")}
         </div>
         """, unsafe_allow_html=True)
 
@@ -141,8 +142,6 @@ def vista_checklist_qr(maquina_id_qr):
         <b>{maquina[2]}</b><br>
         {maquina[3]}<br>
         {maquina[8]} - {maquina[7]}
-        
-        <br><b>Realizado por:</b> {resumen.get("operario", "N/A")}
     </div>
     """, unsafe_allow_html=True)
 
