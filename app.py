@@ -187,8 +187,7 @@ else:
         
 if not modo_qr:
 
-    st.sidebar.title("Menú del sistema")
-    
+    st.sidebar.title("Menú de navegación")
     
     st.sidebar.write(f"👤 {st.session_state.usuario}")
     st.sidebar.write(f"Rol: {st.session_state.rol}")
@@ -205,29 +204,12 @@ if not modo_qr:
     if st.sidebar.button("🏠 Inicio"):
         if rol in ["admin", "tecnico"]:
             st.session_state.opcion = "Inicio" 
-    # -----------------------------
-    # MAQUINARIA
-    # -----------------------------   
-    with st.sidebar.expander("Maquinaria"):
-    
-        if rol in ["admin", "tecnico"]:
-            if st.button("Inventario de Máquinas"):
-                st.session_state.opcion = "Inventario de Máquinas"
-                
-        if rol == "admin":
-            if st.button("Control de traslados"):
-                st.session_state.opcion = "Control de Traslados"
 
-            if st.button("Registro de Sedes"):
-                st.session_state.opcion = "Registro de Sedes"
+    # -----------------------------
+    # 🔧 OPERACIÓN
+    # -----------------------------
+    with st.sidebar.expander("🔧 Operación"):
 
-            if st.button("Registro de Maquinaria"):
-                st.session_state.opcion = "Registro de Maquinaria"
-    # -----------------------------
-    # MANTENIMIENTO
-    # -----------------------------
-    with st.sidebar.expander("Mantenimiento"):
-    
         if rol in ["admin", "tecnico", "operario"]:
             if st.button("Registro de Checklists"):
                 st.session_state.opcion = "Registro de Checklists"
@@ -238,48 +220,74 @@ if not modo_qr:
 
             if st.button("Registro de Mantenimientos"):
                 st.session_state.opcion = "Registro de Mantenimientos"
+
+            if st.button("Control de Traslados"):
+                st.session_state.opcion = "Control de Traslados"
+
+    
     # -----------------------------
-    # REPORTES
+    # 📊 HISTORIAL
     # -----------------------------
-    with st.sidebar.expander("Historial"):
-                
+    with st.sidebar.expander("📊 Historial"):
+
         if rol in ["admin", "tecnico"]:
             if st.button("Historial de Mantenimientos"):
                 st.session_state.opcion = "Historial de Mantenimientos"
 
             if st.button("Historial de Solicitudes"):
                 st.session_state.opcion = "Historial de Solicitudes"
-                
+
             if st.button("Gestión de Checklists"):
                 st.session_state.opcion = "Gestión de Checklists"
 
             if st.button("Hoja de Vida de Equipos"):
                 st.session_state.opcion = "Hoja de Vida de Equipos"
-    
-    
+
+            # 🔥 CAMBIO CLAVE
+            if st.button("Control de Operarios"):
+                st.session_state.opcion = "Historial de Operarios"
+
     # -----------------------------
-    # ANALISIS
-    # -----------------------------        
-    with st.sidebar.expander("Análisis"):
-    
+    # 📈 ANÁLISIS
+    # -----------------------------
+    with st.sidebar.expander("📈 Análisis"):
+
         if rol in ["admin", "tecnico"]:
             if st.button("Dashboard General"):
                 st.session_state.opcion = "Dashboard General"
-                
+
             if st.button("Dashboard de Costos"):
                 st.session_state.opcion = "Dashboard de Costos"
-                
+
+
+    # -----------------------------
+    # 📦 ACTIVOS
+    # -----------------------------
+    with st.sidebar.expander("📦 Activos"):
+
+        if rol in ["admin", "tecnico"]:
+            if st.button("Inventario de Máquinas"):
+                st.session_state.opcion = "Inventario de Máquinas"
+
+        if rol == "admin":
+            if st.button("Registro de Maquinaria"):
+                st.session_state.opcion = "Registro de Maquinaria"
+
+            if st.button("Registro de Sedes"):
+                st.session_state.opcion = "Registro de Sedes"
+
+
+    # -----------------------------
+    # ⚙️ ADMINISTRACIÓN
+    # -----------------------------
+    with st.sidebar.expander("⚙️ Administración"):
+
         if rol == "admin":
             if st.button("Gestión de Usuarios"):
                 st.session_state.opcion = "Gestión de Usuarios"
-            
+
             if st.button("Gestión de Operarios"):
                 st.session_state.opcion = "Gestión de Operarios"
-                
-        if rol in ["admin", "tecnico"]:
-            if st.button("Historial de Operarios"):
-                st.session_state.opcion = "Historial de Operarios"
-                
             
 
 
@@ -289,43 +297,46 @@ if opcion == "Inicio":
     
     vista_inicio()
     
-# Bloque Maquinaría
+# Bloque operación
+elif opcion == "Registro de Checklists":
+    vista_checklists()
+
+elif opcion == "Solicitudes de Mantenimiento":
+    vista_solicitudes()
+
+elif opcion == "Registro de Mantenimientos":
+    vista_mantenimientos()
+
+elif opcion == "Control de Traslados":
+    vista_traslados()
+
+
+# Bloque activos
+elif opcion == "Inventario de Máquinas":
+    vista_inventario_maquinas()
+
 elif opcion == "Registro de Maquinaria":
     vista_registro_maquinaria()
 
 elif opcion == "Registro de Sedes":
     vista_registro_sedes()
 
-elif opcion == "Inventario de Máquinas":
-    vista_inventario_maquinas()
 
-elif opcion == "Control de Traslados":
-    vista_traslados()
-
-
-# Bloque mantenimiento
-elif opcion == "Registro de Checklists":
-    vista_checklists()
-
-elif opcion == "Solicitudes de Mantenimiento":
-    vista_solicitudes()
-               
-elif opcion == "Registro de Mantenimientos":
-    vista_mantenimientos()
-
-
-# Bloque historial    
-elif opcion == "Historial de Solicitudes":
-    vista_historial_solicitudes()
-    
+# Bloque historial
 elif opcion == "Historial de Mantenimientos":
     vista_historial_mantenimientos()
-
-elif opcion == "Hoja de Vida de Equipos":
-    vista_hoja_vida()
     
+elif opcion == "Historial de Solicitudes":
+    vista_historial_solicitudes()
+ 
 elif opcion == "Gestión de Checklists":
     vista_gestion_checklists()
+   
+elif opcion == "Hoja de Vida de Equipos":
+    vista_hoja_vida()
+
+elif opcion == "Historial de Operarios":
+    vista_historial_operarios()
 
 
 # Bloque Analisis    
@@ -334,14 +345,14 @@ elif opcion == "Dashboard General":
     
 elif opcion == "Dashboard de Costos":
     vista_dashboard_costos()
-    
+
+
+# Bloque administración   
 elif opcion == "Gestión de Usuarios":
     vista_usuarios()
     
 elif opcion == "Gestión de Operarios":
     vista_gestion_operarios()
     
-elif opcion == "Historial de Operarios":
-    vista_historial_operarios()
 
 

@@ -67,7 +67,7 @@ def vista_gestion_operarios():
 
             st.success(
                 f"Operario: {operario[1]} {operario[2]} | "
-                f"Sede: {nombre_sede} | {ciudad})"
+                f"Sede: {nombre_sede} | {ciudad}"
             )
         else:
             st.warning("Operario no encontrado")
