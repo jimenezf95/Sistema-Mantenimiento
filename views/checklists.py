@@ -367,6 +367,8 @@ def render_formulario(maquina_id, tipo_maquina, origen, modo):
             }
             
             #st.session_state.checklist_msg = f"Checklist guardada exitosamente. Fallas detectadas: {fallas_detectadas}"
+            # limpiar cache
+            st.cache_data.clear()
             # 🔁 Reset form
             st.session_state.form_checklist_key += 1
             

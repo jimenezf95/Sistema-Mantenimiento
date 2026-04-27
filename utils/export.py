@@ -8,6 +8,7 @@ def generar_excel_solicitudes(data):
         "Máquina",
         "Tipo",
         "Falla",
+        "Descripción",
         "Veces detectada",
         "Estado",
         "Origen"

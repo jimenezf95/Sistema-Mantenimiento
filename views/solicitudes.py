@@ -154,6 +154,8 @@ def vista_solicitudes():
 
             st.session_state.reset_solicitud = True
             st.session_state.solicitud_creada = True
+            
+            st.cache_data.clear()
             st.session_state.form_solicitud_key += 1
             st.rerun()
 

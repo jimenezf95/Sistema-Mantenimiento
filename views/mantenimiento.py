@@ -152,6 +152,11 @@ def vista_mantenimientos():
                 st.session_state.costos_temp = []
 
                 st.success("Mantenimiento registrado correctamente")
+                # Limpiar cache 
+                st.cache_data.clear()
+                # Resetear formulario
+                st.session_state.form_mantenimiento_key += 1
+
                 st.rerun()
             
     
