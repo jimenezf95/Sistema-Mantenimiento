@@ -208,86 +208,107 @@ if not modo_qr:
     # -----------------------------
     # 🔧 OPERACIÓN
     # -----------------------------
-    with st.sidebar.expander("🔧 Operación"):
+    with st.sidebar:
+        with st.expander("🔧 Operación"):
 
-        if rol in ["admin", "tecnico", "operario"]:
-            if st.button("Registro de Checklists"):
-                st.session_state.opcion = "Registro de Checklists"
+            if rol in ["admin", "tecnico", "operario"]:
+                if st.button("Registro de Checklists"):
+                    st.session_state.opcion = "Registro de Checklists"
+                    st.rerun()
 
-        if rol in ["admin", "tecnico"]:
-            if st.button("Solicitudes de Mantenimiento"):
-                st.session_state.opcion = "Solicitudes de Mantenimiento"
+            if rol in ["admin", "tecnico"]:
+                if st.button("Solicitudes de Mantenimiento"):
+                    st.session_state.opcion = "Solicitudes de Mantenimiento"
+                    st.rerun()
 
-            if st.button("Registro de Mantenimientos"):
-                st.session_state.opcion = "Registro de Mantenimientos"
+                if st.button("Registro de Mantenimientos"):
+                    st.session_state.opcion = "Registro de Mantenimientos"
+                    st.rerun()
 
-            if st.button("Control de Traslados"):
-                st.session_state.opcion = "Control de Traslados"
+                if st.button("Control de Traslados"):
+                    st.session_state.opcion = "Control de Traslados"
+                    st.rerun()
 
     
     # -----------------------------
     # 📊 HISTORIAL
     # -----------------------------
-    with st.sidebar.expander("📊 Historial"):
+    with st.sidebar:
+        with st.expander("📊 Historial"):
 
-        if rol in ["admin", "tecnico"]:
-            if st.button("Historial de Mantenimientos"):
-                st.session_state.opcion = "Historial de Mantenimientos"
+            if rol in ["admin", "tecnico"]:
+                if st.button("Historial de Mantenimientos"):
+                    st.session_state.opcion = "Historial de Mantenimientos"
+                    st.rerun()
 
-            if st.button("Historial de Solicitudes"):
-                st.session_state.opcion = "Historial de Solicitudes"
+                if st.button("Historial de Solicitudes"):
+                    st.session_state.opcion = "Historial de Solicitudes"
+                    st.rerun()
 
-            if st.button("Gestión de Checklists"):
-                st.session_state.opcion = "Gestión de Checklists"
+                if st.button("Gestión de Checklists"):
+                    st.session_state.opcion = "Gestión de Checklists"
+                    st.rerun()
 
-            if st.button("Hoja de Vida de Equipos"):
-                st.session_state.opcion = "Hoja de Vida de Equipos"
+                if st.button("Hoja de Vida de Equipos"):
+                    st.session_state.opcion = "Hoja de Vida de Equipos"
+                    st.rerun()
 
-            # 🔥 CAMBIO CLAVE
-            if st.button("Control de Operarios"):
-                st.session_state.opcion = "Historial de Operarios"
+                # 🔥 CAMBIO CLAVE
+                if st.button("Control de Operarios"):
+                    st.session_state.opcion = "Historial de Operarios"
+                    st.rerun()
 
     # -----------------------------
     # 📈 ANÁLISIS
     # -----------------------------
-    with st.sidebar.expander("📈 Análisis"):
+    with st.sidebar:
+        with st.expander("📈 Análisis"):
 
-        if rol in ["admin", "tecnico"]:
-            if st.button("Dashboard General"):
-                st.session_state.opcion = "Dashboard General"
+            if rol in ["admin", "tecnico"]:
+                if st.button("Dashboard General"):
+                    st.session_state.opcion = "Dashboard General"
+                    st.rerun()
 
-            if st.button("Dashboard de Costos"):
-                st.session_state.opcion = "Dashboard de Costos"
+                if st.button("Dashboard de Costos"):
+                    st.session_state.opcion = "Dashboard de Costos"
+                    st.rerun()
 
 
     # -----------------------------
     # 📦 ACTIVOS
     # -----------------------------
-    with st.sidebar.expander("📦 Activos"):
+    with st.sidebar:
+        with st.expander("📦 Activos"):
 
-        if rol in ["admin", "tecnico"]:
-            if st.button("Inventario de Máquinas"):
-                st.session_state.opcion = "Inventario de Máquinas"
+            if rol in ["admin", "tecnico"]:
+                if st.button("Inventario de Máquinas"):
+                    st.session_state.opcion = "Inventario de Máquinas"
+                    st.rerun()
 
-        if rol == "admin":
-            if st.button("Registro de Maquinaria"):
-                st.session_state.opcion = "Registro de Maquinaria"
+            if rol == "admin":
+                if st.button("Registro de Maquinaria"):
+                    st.session_state.opcion = "Registro de Maquinaria"
+                    st.rerun()
 
-            if st.button("Registro de Sedes"):
-                st.session_state.opcion = "Registro de Sedes"
+                if st.button("Registro de Sedes"):
+                    st.session_state.opcion = "Registro de Sedes"
+                    st.rerun()
 
 
     # -----------------------------
     # ⚙️ ADMINISTRACIÓN
     # -----------------------------
-    with st.sidebar.expander("⚙️ Administración"):
+    with st.sidebar:
+        with st.expander("⚙️ Administración"):
 
-        if rol == "admin":
-            if st.button("Gestión de Usuarios"):
-                st.session_state.opcion = "Gestión de Usuarios"
+            if rol == "admin":
+                if st.button("Gestión de Usuarios"):
+                    st.session_state.opcion = "Gestión de Usuarios"
+                    st.rerun()
 
-            if st.button("Gestión de Operarios"):
-                st.session_state.opcion = "Gestión de Operarios"
+                if st.button("Gestión de Operarios"):
+                    st.session_state.opcion = "Gestión de Operarios"
+                    st.rerun()
             
 
 

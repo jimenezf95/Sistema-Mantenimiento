@@ -1,13 +1,22 @@
 import psycopg2
 import streamlit as st
 from datetime import datetime, date
-    
-def conectar():
-    return psycopg2.connect(st.secrets["DATABASE_URL"])
-
 import unicodedata
 import re
 import hashlib
+
+from psycopg2 import pool
+
+# 🔥 POOL DE CONEXIONES GLOBAL
+connection_pool = pool.SimpleConnectionPool(
+    1, 10,  # mínimo 1, máximo 10 conexiones
+    st.secrets["DATABASE_URL"]
+)
+   
+def conectar():
+    return connection_pool.getconn()
+
+
 
 def limpiar_cedula(cedula):
     return re.sub(r'\D', '', cedula)
@@ -27,6 +36,8 @@ def crear_tablas():
 
     conn = conectar()
     cursor = conn.cursor()
+    
+    
 
     # ======================
     # SEDES
@@ -230,7 +241,7 @@ def crear_tablas():
     """)
 
     conn.commit()
-    conn.close() 
+    connection_pool.putconn(conn) 
     
     
 #---------------------
@@ -250,7 +261,7 @@ def crear_tabla_usuarios():
     """)
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -268,7 +279,7 @@ def crear_usuario(usuario, password, rol):
     """, (usuario, password_hash, rol))
 
     conn.commit()
-    conn.close()  
+    connection_pool.putconn(conn)  
   
 def validar_usuario(usuario, password):
 
@@ -284,7 +295,7 @@ def validar_usuario(usuario, password):
 
     resultado = cursor.fetchone()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return resultado[0] if resultado else None  
   
@@ -296,7 +307,7 @@ def obtener_usuarios():
     cursor.execute("SELECT id, usuario, rol FROM usuarios")
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos  
   
@@ -308,7 +319,7 @@ def eliminar_usuario(usuario_id):
     cursor.execute("DELETE FROM usuarios WHERE id = %s", (usuario_id,))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def actualizar_usuario(usuario_id, nuevo_password=None, nuevo_rol=None):
 
@@ -327,7 +338,7 @@ def actualizar_usuario(usuario_id, nuevo_password=None, nuevo_rol=None):
         """, (nuevo_rol, usuario_id))
 
     conn.commit()
-    conn.close()  
+    connection_pool.putconn(conn)  
 
 
 
@@ -351,7 +362,7 @@ def insertar_maquina(tipo, activo_fijo, numero_equipo, modelo, fabricante, estad
     maquina_id = cursor.fetchone()[0]
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return maquina_id
 
@@ -377,7 +388,7 @@ def obtener_maquinas():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -404,7 +415,7 @@ def obtener_maquina_por_id(maquina_id):
 
     maquina = cursor.fetchone()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return maquina
 
@@ -416,7 +427,7 @@ def eliminar_maquina(id_maquina):
     cursor.execute("DELETE FROM maquinas WHERE id = %s", (id_maquina,))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def actualizar_maquina(id, tipo, activo_fijo, numero_equipo, modelo, fabricante, estado_operacion, sede_id):
 
@@ -432,7 +443,7 @@ def actualizar_maquina(id, tipo, activo_fijo, numero_equipo, modelo, fabricante,
     """, (tipo, activo_fijo, numero_equipo, modelo, fabricante, estado_operacion, sede_id, id))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def conteo_maquinas_por_sede():
 
@@ -452,7 +463,7 @@ def conteo_maquinas_por_sede():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -463,7 +474,7 @@ def obtener_tipos_maquina():
     cursor.execute("SELECT DISTINCT tipo FROM maquinas ORDER BY tipo")
     data = [row[0] for row in cursor.fetchall()]
 
-    conn.close()
+    connection_pool.putconn(conn)
     return data
 
 #---------------------
@@ -483,7 +494,7 @@ def insertar_sede(nombre, ciudad):
     """, (nombre, ciudad))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def obtener_sedes():
 
@@ -494,7 +505,7 @@ def obtener_sedes():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -505,7 +516,7 @@ def obtener_sedes_diff():
     cursor.execute("SELECT DISTINCT nombre FROM sedes ORDER BY nombre")
     data = [row[0] for row in cursor.fetchall()]
 
-    conn.close()
+    connection_pool.putconn(conn)
     return data
 
 def sede_tiene_maquinas(sede_id):
@@ -520,7 +531,7 @@ def sede_tiene_maquinas(sede_id):
 
     cantidad = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return cantidad
 
@@ -532,7 +543,7 @@ def eliminar_sede(id):
     cursor.execute("DELETE FROM sedes WHERE id = %s", (id,))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 #---------------------
 # TRASLADOS
@@ -554,7 +565,7 @@ def insertar_traslado(maquina_id, sede_origen, sede_destino, fecha, responsable,
     """, (sede_destino, maquina_id))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def obtener_traslados():
 
@@ -579,7 +590,7 @@ def obtener_traslados():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -606,7 +617,7 @@ def obtener_ultimos_traslados(limit=10):
     """, (limit,))
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -626,7 +637,7 @@ def insertar_checklist(maquina_id, fecha, origen, operario_id=None):
     checklist_id = cursor.fetchone()[0]
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return checklist_id
 
@@ -642,7 +653,7 @@ def insertar_item_checklist(checklist_id, item, cumple, observaciones, item_id=N
     """, (checklist_id, item, cumple, observaciones, item_id))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def obtener_checklists():
 
@@ -663,7 +674,7 @@ def obtener_checklists():
 
     checklists = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return checklists
 
@@ -691,7 +702,7 @@ def obtener_ultimos_checklists_por_maquina(maquina_id):
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -708,7 +719,7 @@ def obtener_items_checklist(checklist_id):
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -730,7 +741,7 @@ def eliminar_checklist(checklist_id):
     """, (checklist_id,))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def obtener_ultimos_checklists(limit=10):
 
@@ -756,7 +767,7 @@ def obtener_ultimos_checklists(limit=10):
     """, (limit,))
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return data
 
@@ -786,7 +797,7 @@ def obtener_checklists_por_ciudad(ciudad):
     """, (ciudad,))
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return data
 
@@ -816,7 +827,7 @@ def obtener_checklists_por_sede(sede):
     """, (sede,))
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return data
 
@@ -834,7 +845,7 @@ def obtener_categorias(tipo_maquina):
     """, (tipo_maquina,))
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return [{"id": d[0], "nombre": d[1]} for d in data]
 
@@ -851,7 +862,7 @@ def obtener_items(categoria_id):
     """, (categoria_id,))
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return [{"id": d[0], "nombre": d[1]} for d in data]
 
@@ -866,7 +877,7 @@ def crear_categoria(nombre, tipo_maquina, orden):
     """, (nombre, tipo_maquina, orden))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def crear_item(categoria_id, nombre, orden):
 
@@ -879,7 +890,7 @@ def crear_item(categoria_id, nombre, orden):
     """, (categoria_id, nombre, orden))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def editar_item(item_id, nuevo_nombre):
 
@@ -893,7 +904,7 @@ def editar_item(item_id, nuevo_nombre):
     """, (nuevo_nombre, item_id))
 
     conn.commit()
-    conn.close()   
+    connection_pool.putconn(conn)   
     
 def desactivar_item(item_id):
 
@@ -907,7 +918,7 @@ def desactivar_item(item_id):
     """, (item_id,))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def actualizar_orden_item(item_id, nuevo_orden):
 
@@ -921,7 +932,7 @@ def actualizar_orden_item(item_id, nuevo_orden):
     """, (nuevo_orden, item_id))
 
     conn.commit()
-    conn.close()    
+    connection_pool.putconn(conn)    
 
 def obtener_checklists_paginados(limit, offset):
 
@@ -936,7 +947,7 @@ def obtener_checklists_paginados(limit, offset):
     """, (limit, offset))
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return data
 
@@ -948,7 +959,7 @@ def contar_checklists():
     cursor.execute("SELECT COUNT(*) FROM checklists")
     total = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
     return total 
 
 def obtener_detalle_checklist(checklist_id):
@@ -963,7 +974,7 @@ def obtener_detalle_checklist(checklist_id):
     """, (checklist_id,))
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return data
 
@@ -1003,7 +1014,7 @@ def obtener_checklists_filtrados(limit, offset, fecha_inicio=None, fecha_fin=Non
     cursor.execute(query, tuple(params))
     data = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
     return data
 
 def contar_checklists_filtrados(fecha_inicio=None, fecha_fin=None, tipo_maquina=None, maquina_id=None):
@@ -1038,7 +1049,7 @@ def contar_checklists_filtrados(fecha_inicio=None, fecha_fin=None, tipo_maquina=
     cursor.execute(query, tuple(params))
     total = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
     return total   
 
 def obtener_checklists_export(fecha_inicio=None, fecha_fin=None, tipo_maquina=None, maquina_id=None):
@@ -1110,7 +1121,7 @@ def obtener_checklists_export(fecha_inicio=None, fecha_fin=None, tipo_maquina=No
             resumen
         ))
 
-    conn.close()
+    connection_pool.putconn(conn)
     return resultado
 
 def existe_checklist_dia(maquina_id, fecha):
@@ -1128,7 +1139,7 @@ def existe_checklist_dia(maquina_id, fecha):
 
     existe = cursor.fetchone()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return existe is not None
 
@@ -1152,7 +1163,7 @@ def solicitud_pendiente_existente(maquina_id, descripcion):
 
     resultado = cursor.fetchone()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return resultado is not None
 
@@ -1187,7 +1198,7 @@ def insertar_solicitud(maquina_id, item_falla, observacion, origen):
         """, (veces, solicitud_id))
 
         conn.commit()
-        conn.close()
+        connection_pool.putconn(conn)
 
         return False, veces
 
@@ -1203,7 +1214,7 @@ def insertar_solicitud(maquina_id, item_falla, observacion, origen):
         """, (maquina_id, item_falla_normalizado, descripcion, origen))
 
         conn.commit()
-        conn.close()
+        connection_pool.putconn(conn)
 
         return True, 1
 
@@ -1227,7 +1238,7 @@ def obtener_solicitudes_pendientes():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -1243,7 +1254,7 @@ def cerrar_solicitud(solicitud_id):
     """, (solicitud_id,))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def obtener_todas_solicitudes():
 
@@ -1267,7 +1278,7 @@ def obtener_todas_solicitudes():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -1288,7 +1299,7 @@ def obtener_solicitudes_pendientes_por_maquina(maquina_id):
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -1318,7 +1329,7 @@ def actualizar_estado_por_solicitudes(maquina_id):
     """, (nuevo_estado, maquina_id))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def actualizar_estado_maquina(maquina_id, nuevo_estado):
 
@@ -1349,7 +1360,7 @@ def actualizar_estado_maquina(maquina_id, nuevo_estado):
         """, (maquina_id, nuevo_estado))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def obtener_solicitudes_filtradas(ciudad=None, sede=None, tipo=None, maquina=None, pagina=1, limite=15):
 
@@ -1398,7 +1409,7 @@ def obtener_solicitudes_filtradas(ciudad=None, sede=None, tipo=None, maquina=Non
     cursor.execute(query, params)
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
     return datos
 
 def contar_solicitudes_filtradas(ciudad=None, sede=None, tipo=None, maquina=None):
@@ -1435,7 +1446,7 @@ def contar_solicitudes_filtradas(ciudad=None, sede=None, tipo=None, maquina=None
     cursor.execute(query, params)
     total = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
     return total
 
 def resumen_estados_solicitudes(ciudad=None, sede=None, tipo=None, maquina=None):
@@ -1476,7 +1487,7 @@ def resumen_estados_solicitudes(ciudad=None, sede=None, tipo=None, maquina=None)
 
     pendientes, cerradas, total = cursor.fetchone()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return pendientes or 0, cerradas or 0, total or 0
 
@@ -1534,7 +1545,7 @@ def obtener_solicitudes_export(ciudad=None, sede=None, tipo=None, maquina_id=Non
     cursor.execute(query, tuple(params))
     data = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
     return data
 
 
@@ -1591,7 +1602,7 @@ def registrar_mantenimiento(maquina_id, fecha, tecnico, recibido_por, observacio
         return None
     
     finally:
-        conn.close()
+        connection_pool.putconn(conn)
          
 def obtener_mantenimientos_paginados(pagina, registros_por_pagina=15):
 
@@ -1617,7 +1628,7 @@ def obtener_mantenimientos_paginados(pagina, registros_por_pagina=15):
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -1630,7 +1641,7 @@ def contar_mantenimientos():
 
     total = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return total
 
@@ -1656,7 +1667,7 @@ def obtener_mantenimientos_por_maquina(maquina_id):
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -1680,7 +1691,7 @@ def obtener_todos_mantenimientos():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -1740,7 +1751,7 @@ def obtener_mantenimientos_con_solicitudes(maquina_id=None):
         """)
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -1756,7 +1767,7 @@ def actualizar_mantenimiento(mantenimiento_id, tecnico, recibido_por, observacio
     """, (tecnico, recibido_por, observaciones, mantenimiento_id))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def obtener_descripciones_solicitudes(ids_str):
 
@@ -1778,7 +1789,7 @@ def obtener_descripciones_solicitudes(ids_str):
 
     resultados = [r[0] for r in cursor.fetchall()]
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return ", ".join(resultados)
 
@@ -1796,7 +1807,7 @@ def insertar_costo(mantenimiento_id, tipo, descripcion, cantidad, costo_unitario
     """, (mantenimiento_id, tipo, descripcion, cantidad, costo_unitario, costo_total))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def obtener_costos_por_mantenimiento(mantenimiento_id):
 
@@ -1811,7 +1822,7 @@ def obtener_costos_por_mantenimiento(mantenimiento_id):
 
     resultados = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return resultados
 
@@ -1829,7 +1840,7 @@ def actualizar_costo(costo_id, descripcion, cantidad, costo_unitario):
     """, (descripcion, cantidad, costo_unitario, costo_total, costo_id))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
 
 def eliminar_costo(costo_id):
 
@@ -1839,7 +1850,7 @@ def eliminar_costo(costo_id):
     cursor.execute("DELETE FROM costos_mantenimiento WHERE id = %s", (costo_id,))
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def obtener_mantenimientos_export(maquina_id=None):
 
@@ -1869,7 +1880,7 @@ def obtener_mantenimientos_export(maquina_id=None):
     cursor.execute(query, tuple(params))
     data = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
     return data    
 
 def obtener_mantenimientos_con_costos_export(maquina_id=None):
@@ -1919,7 +1930,7 @@ def obtener_mantenimientos_con_costos_export(maquina_id=None):
 
     costos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return mantenimientos, costos
 
@@ -1941,7 +1952,7 @@ def obtener_costo_total_maquina(maquina_id):
 
     total = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return total or 0
 
@@ -1958,7 +1969,7 @@ def obtener_total_por_mantenimiento(mantenimiento_id):
 
     total = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return total or 0
 
@@ -1976,7 +1987,7 @@ def obtener_ultimas_solicitudes(maquina_id, limite=3):
     """, (maquina_id, limite))
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2001,7 +2012,7 @@ def obtener_costos_por_maquina(maquina_id, limite=10):
     """, (maquina_id, limite))
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2022,7 +2033,7 @@ def obtener_solicitudes_por_maquina(maquina_id):
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2067,7 +2078,7 @@ def obtener_checklists_por_maquina(maquina_id):
             items_no_conformes
         ))
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return resultado
 
@@ -2093,7 +2104,7 @@ def obtener_traslados_por_maquina(maquina_id):
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2153,7 +2164,7 @@ def obtener_indicadores_maquina(maquina_id):
     ultimo = cursor.fetchone()
     ultimo = ultimo[0] if ultimo else "Sin registros"
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return {
         "estado": estado,
@@ -2180,7 +2191,7 @@ def obtener_ubicacion_maquina(maquina_id):
 
     datos = cursor.fetchone()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2199,7 +2210,7 @@ def obtener_ultimo_traslado(maquina_id):
 
     dato = cursor.fetchone()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return dato[0] if dato else None
 
@@ -2217,7 +2228,7 @@ def obtener_historial_estado(maquina_id):
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2234,7 +2245,7 @@ def obtener_resumen_general():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     resumen = {
         "Operativa": 0,
@@ -2266,7 +2277,7 @@ def obtener_top_fallas():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2289,7 +2300,7 @@ def obtener_top_fallas_por_maquina():
     """)
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2308,7 +2319,7 @@ def obtener_ultimos_mantenimientos_dashboard():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2330,7 +2341,7 @@ def calcular_disponibilidad():
 
     operativas = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     if total == 0:
         return 0
@@ -2395,7 +2406,7 @@ def obtener_alertas():
             if dias > 30:
                 alertas.append(f"🟡 {m[1]} {m[0]} sin mantenimiento hace {dias} días")
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return alertas
 
@@ -2418,7 +2429,7 @@ def obtener_ranking_maquinas():
 
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2440,7 +2451,7 @@ def obtener_costos_dashboard():
     """)
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2493,7 +2504,7 @@ def obtener_costos_filtrados(fecha_inicio=None, fecha_fin=None, tipo=None, maqui
     cursor.execute(query, params)
     datos = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
     return datos 
 
 def obtener_kpis_costos():
@@ -2513,7 +2524,7 @@ def obtener_kpis_costos():
     """)
     ultima_fecha = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return total or 0, promedio or 0, cantidad or 0, ultima_fecha
 
@@ -2536,7 +2547,7 @@ def obtener_ranking_costos_maquinas(limite=5):
     """, (limite,))
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2556,7 +2567,7 @@ def obtener_costos_por_mes():
     """)
 
     datos = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return datos
 
@@ -2576,7 +2587,7 @@ def crear_tabla_operarios():
     """)
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def agregar_columna_operario():
     conn = conectar()
@@ -2588,7 +2599,7 @@ def agregar_columna_operario():
         pass
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def agregar_sede_operario():
     conn = conectar()
@@ -2603,7 +2614,7 @@ def agregar_sede_operario():
         None
 
     conn.commit()
-    conn.close()
+    connection_pool.putconn(conn)
     
 def obtener_operario_por_cedula(cedula):
 
@@ -2623,7 +2634,7 @@ def obtener_operario_por_cedula(cedula):
     """, (cedula,))
 
     resultado = cursor.fetchone()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return resultado
 
@@ -2661,7 +2672,7 @@ def registrar_operario(cedula, nombre, apellido, sede):
         return False, str(e)
 
     finally:
-        conn.close()
+        connection_pool.putconn(conn)
         
         
 def obtener_historial_operarios(filtro_sede=None, filtro_tipo=None):
@@ -2712,7 +2723,7 @@ def obtener_historial_operarios(filtro_sede=None, filtro_tipo=None):
     cursor.execute(query, tuple(params))
     data = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
     return data
 
 def obtener_control_diario_operarios():
@@ -2733,7 +2744,7 @@ def obtener_control_diario_operarios():
     """)
     operarios_activos = cursor.fetchone()[0]
 
-    conn.close()
+    connection_pool.putconn(conn)
 
     return total_operarios, operarios_activos
 
@@ -2765,7 +2776,7 @@ def obtener_operarios_pendientes(filtro_sede=None):
     cursor.execute(query, tuple(params))
     data = cursor.fetchall()
 
-    conn.close()
+    connection_pool.putconn(conn)
     return data
 
 def obtener_kpi_por_sede():
@@ -2788,7 +2799,7 @@ def obtener_kpi_por_sede():
     """)
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return data
 
@@ -2812,7 +2823,7 @@ def obtener_kpi_real_por_sede():
     """)
 
     data = cursor.fetchall()
-    conn.close()
+    connection_pool.putconn(conn)
 
     return data
 

@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 import qrcode
 from io import BytesIO
+import os
 
 def generar_qr_etiqueta(maquina, base_url):
 
@@ -15,15 +16,16 @@ def generar_qr_etiqueta(maquina, base_url):
     # COLORES CORPORATIVOS
     # =========================
     COLOR_FONDO = "#FFFFFF"
-    COLOR_PRIMARIO = "#0F2A44"   # Azul oscuro (puedes cambiar)
-    COLOR_SECUNDARIO = "#F2C201" # Amarillo (ejemplo)
-    COLOR_TEXTO = "#000000"
+    COLOR_PRIMARIO = "#00A844"   # Verde vivo (puedes cambiar)
+    COLOR_SECUNDARIO = "#1B5E36" # Verde oscuro (ejemplo)
+    COLOR_TEXTO = "#2D3748"    # Gris oscuro para texto
+    Color_TEXTO_CUERPO = "#4A5568" # Gris medio para cuerpo de texto
 
     # =========================
     # CREAR BASE
     # =========================
-    ancho = 420
-    alto = 520
+    ancho = 450
+    alto =600
 
     img = Image.new("RGB", (ancho, alto), COLOR_FONDO)
     draw = ImageDraw.Draw(img)
@@ -36,22 +38,47 @@ def generar_qr_etiqueta(maquina, base_url):
     # =========================
     # HEADER (barra superior)
     # =========================
-    draw.rectangle([(0,0),(ancho,80)], fill=COLOR_PRIMARIO)
+    header_h = 100
+    draw.rectangle([(0,0),(ancho,header_h)], fill=COLOR_PRIMARIO)
 
     # =========================
     # CARGAR LOGO
     # =========================
     try:
-        logo = Image.open("logo.png")
-        logo = logo.resize((60, 60))
-        img.paste(logo, (10,10), logo)
-    except:
-        pass  # si no hay logo no rompe
+        ruta_logo = os.path.join(os.path.dirname(__file__), "logo_CIACA.png")
+
+        logo = Image.open(ruta_logo).convert("RGBA")
+        
+        # tamaño máximo permitido dentro del header
+        max_width = 120
+        max_height = 60
+        logo.thumbnail((max_width, max_height), Image.LANCZOS)
+
+        logo_x = 10
+        logo_w, logo_h = logo.size
+        logo_y = (header_h - logo_h) // 2
+
+        # 🔥 crear fondo blanco (padding)
+        padding = 8
+        fondo_w = logo_w + padding*2
+        fondo_h = logo_h + padding*2
+
+        fondo_logo = Image.new("RGBA", (fondo_w, fondo_h), (255,255,255,255))
+
+        # pegar logo dentro del fondo
+        fondo_logo.paste(logo, (padding, padding), logo)
+
+        # pegar fondo en imagen principal
+        img.paste(fondo_logo, (logo_x, logo_y - padding//2), fondo_logo)
+
+    except Exception as e:
+        print("Error cargando logooooo:", e)
 
     # =========================
     # FUENTES
     # =========================
     try:
+        font_title = ImageFont.truetype("arialbd.ttf", 22)
         font_titulo = ImageFont.truetype("arial.ttf", 30)
         font_sub = ImageFont.truetype("arial.ttf", 18)
         font_small = ImageFont.truetype("arial.ttf", 16)
@@ -63,29 +90,61 @@ def generar_qr_etiqueta(maquina, base_url):
     # =========================
     # TEXTO HEADER
     # =========================
-    draw.text((90, 20), "CHECKLIST", fill="white", font=font_titulo)
+    texto_header = "Inspección Preoperacional"
 
+    bbox = draw.textbbox((0,0), texto_header, font=font_title)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+
+    text_x = logo_x + fondo_w + 20
+    text_y = (header_h - text_h) // 2
+    
+    # sombra
+    draw.text((text_x+1, text_y+1), texto_header, fill="black", font=font_title)
+    # texto principal
+    draw.text((text_x, text_y), texto_header, fill="white", font=font_title)
+        
     # =========================
     # INFO MÁQUINA
     # =========================
-    draw.text((20, 100), f"{activo}", fill=COLOR_TEXTO, font=font_titulo)
-    draw.text((20, 140), f"{tipo}", fill=COLOR_TEXTO, font=font_sub)
-    draw.text((20, 170), f"Equipo: {equipo}", fill=COLOR_TEXTO, font=font_sub)
+    draw.text((20, 120), f"{tipo} {equipo}", fill=COLOR_TEXTO, font=font_titulo)
+    draw.text((20, 160), f"{activo}", fill=COLOR_TEXTO, font=font_sub)
+    #draw.text((20, 170), f"Equipo: {equipo}", fill=COLOR_TEXTO, font=font_sub)
 
     # =========================
-    # QR
+    # QR PERSONALIZADO
     # =========================
-    qr = qrcode.make(url)
-    qr = qr.resize((260, 260))
+    qr = qrcode.QRCode(
+        version=2,
+        box_size=10,
+        border=2
+    )
 
-    qr_x = (ancho - 260) // 2
-    img.paste(qr, (qr_x, 210))
+    qr.add_data(url)
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(
+        fill_color=COLOR_SECUNDARIO,
+        back_color="white"
+    )
+
+    qr_img = qr_img.resize((300, 300))
+
+    qr_x = (ancho - 300) // 2
+    img.paste(qr_img, (qr_x, 200))
 
     # =========================
     # TEXTO INFERIOR
     # =========================
-    draw.text((80, 480), "Escanee para inspección", fill=COLOR_TEXTO, font=font_small)
+    draw.rectangle([(0, 560), (ancho, alto+10)], fill=COLOR_PRIMARIO)
 
+    draw.text(
+        (60, 570),
+        "ESCANEE PARA REGISTRAR INSPECCIÓN",
+        fill="black",
+        font=font_small
+    )
+    
     # =========================
     # EXPORTAR
     # =========================

@@ -70,25 +70,25 @@ def construir_mensaje_y_nombre(modo_filtro, ciudad, sede, tipo, maquina_texto):
     if modo_filtro == "Por ubicación":
         if ciudad != "Todas" and sede != "Todas":
             texto = f"para {ciudad} - {sede}"
-            nombre = f"solicitudes_{ciudad}_{sede}"
+            nombre = f"solicitudes_pendientes_{ciudad}_{sede}"
         elif ciudad != "Todas":
             texto = f"para {ciudad}"
-            nombre = f"solicitudes_{ciudad}"
+            nombre = f"solicitudes_pendientes_{ciudad}"
         else:
             texto = "por ubicación"
-            nombre = "solicitudes_ubicacion"
+            nombre = "solicitudes_pendientes_ubicacion"
 
     elif modo_filtro == "Por tipo de máquina" and tipo and tipo != "Todos":
         texto = f"para {tipo}"
-        nombre = f"solicitudes_{tipo}"
+        nombre = f"solicitudes_pendientes_{tipo}"
 
     elif modo_filtro == "Por máquina específica" and maquina_texto:
         texto = f"para {maquina_texto}"
-        nombre = f"solicitudes_{maquina_texto}"
+        nombre = f"solicitudes_pendientes_{maquina_texto}"
 
     else:
         texto = "completo"
-        nombre = "solicitudes_completo"
+        nombre = "solicitudes_pendientes_completo"
 
     nombre = nombre.replace(" ", "_").replace("|", "").replace("-", "_")
 
@@ -378,7 +378,6 @@ def vista_historial_solicitudes():
             col8.markdown("🔴 Pendiente" if s[7] == "Pendiente" else "🟢 Cerrada")
 
 def vista_historial_mantenimientos():
-    st.subheader("Últimos mantenimientos")
     
     if "confirmar_export_mantenimientos" not in st.session_state:
         st.session_state.confirmar_export_mantenimientos = False
