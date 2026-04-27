@@ -6,13 +6,18 @@ from database import (
     actualizar_usuario
 )
 
-if "edit_user_id" not in st.session_state:
-    st.session_state.edit_user_id = None
 
-if "confirm_delete_user" not in st.session_state:
-    st.session_state.confirm_delete_user = None
 
 def vista_usuarios():
+    
+    if "edit_user_id" not in st.session_state:
+        st.session_state.edit_user_id = None
+
+    if "confirm_delete_user" not in st.session_state:
+        st.session_state.confirm_delete_user = None
+        
+    if "form_usuario_key" not in st.session_state:
+        st.session_state.form_usuario_key = 0
 
     st.header("👤 Gestión de Usuarios")
 
@@ -24,21 +29,24 @@ def vista_usuarios():
     col1, col2 = st.columns(2)
 
     with col1:
-        nuevo_usuario = st.text_input("Usuario")
+        nuevo_usuario = st.text_input("Usuario", key=f"user_{st.session_state.form_usuario_key}")
+
 
     with col2:
-        nuevo_password = st.text_input("Contraseña", type="password")
+        nuevo_password = st.text_input("Contraseña", type="password", key=f"pass_{st.session_state.form_usuario_key}")
 
-    rol = st.selectbox("Rol", ["admin", "tecnico", "operario"])
+
+    rol = st.selectbox("Rol", ["Seleccionar", "admin", "tecnico", "operario"], key=f"rol_{st.session_state.form_usuario_key}")
 
     if st.button("Crear usuario"):
 
-        if not nuevo_usuario or not nuevo_password:
+        if not nuevo_usuario or not nuevo_password or rol == "Seleccionar":
             st.warning("Completa todos los campos")
         else:
             try:
                 crear_usuario(nuevo_usuario, nuevo_password, rol)
                 st.success("Usuario creado correctamente")
+                st.session_state.form_usuario_key += 1 #RESET FORM
                 st.rerun()
             except:
                 st.error("El usuario ya existe")
@@ -68,8 +76,11 @@ def vista_usuarios():
                     st.session_state.edit_user_id = user_id
 
             with col3:
-                if st.button("🗑️", key=f"del_{user_id}"):
-                    st.session_state.confirm_delete_user = user_id
+                if usuario == st.session_state.usuario:
+                    st.button("🚫", key=f"del_{user_id}", disabled=True)
+                else:
+                    if st.button("🗑️", key=f"del_{user_id}"):
+                        st.session_state.confirm_delete_user = user_id
                     
     # =========================
     # EDITAR USUARIO
@@ -121,15 +132,12 @@ def vista_usuarios():
         col1, col2 = st.columns(2)
 
         with col1:
-            
-            if usuario == st.session_state.usuario:
-                st.error("No puedes eliminar tu propio usuario")
-            else:
-                st.session_state.confirm_delete_user = user_id
-                
             if st.button("✅ Sí, eliminar"):
 
-                eliminar_usuario(st.session_state.confirm_delete_user)
+                eliminar_usuario(
+                    st.session_state.confirm_delete_user,
+                    st.session_state.usuario
+                    )
 
                 st.success("Usuario eliminado")
                 st.session_state.confirm_delete_user = None
@@ -139,9 +147,9 @@ def vista_usuarios():
             if st.button("❌ Cancelar"):
                 st.session_state.confirm_delete_user = None
                 st.rerun()              
-                        
-    
-    
+                            
+        
+        
     
     
     

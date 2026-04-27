@@ -348,14 +348,21 @@ def obtener_usuarios():
         cursor.close()
         connection_pool.putconn(conn)
   
-def eliminar_usuario(usuario_id):
+def eliminar_usuario(usuario_id, usuario_actual):
 
     conn = conectar()
     cursor = conn.cursor()
     try:
 
-        cursor.execute("DELETE FROM usuarios WHERE id = %s", (usuario_id,))
+        # 🔥 VALIDACIÓN
+        cursor.execute("SELECT usuario FROM usuarios WHERE id = %s", (usuario_id,))
+        resultado = cursor.fetchone()
 
+        if resultado and resultado[0] == usuario_actual:
+            print("Intento de auto-eliminación bloqueado")
+            return
+
+        cursor.execute("DELETE FROM usuarios WHERE id = %s", (usuario_id,))
         conn.commit()
         
     except Exception as e:
