@@ -75,24 +75,45 @@ def generar_qr_etiqueta(maquina, base_url):
         print("Error cargando logooooo:", e)
 
     # =========================
-    # FUENTES
+    # FUENTES (SEGURO)
     # =========================
+
+    # 🔥 SIEMPRE inicializar
+    font_title = ImageFont.load_default()
+    font_titulo = ImageFont.load_default()
+    font_sub = ImageFont.load_default()
+    font_small = ImageFont.load_default()
+
+    # 🔥 intentar cargar fuentes reales
     try:
         font_title = ImageFont.truetype("arialbd.ttf", 22)
+    except Exception as e:
+        print("Error font_title:", e)
+
+    try:
         font_titulo = ImageFont.truetype("arial.ttf", 30)
+    except Exception as e:
+        print("Error font_titulo:", e)
+
+    try:
         font_sub = ImageFont.truetype("arial.ttf", 18)
+    except Exception as e:
+        print("Error font_sub:", e)
+
+    try:
         font_small = ImageFont.truetype("arial.ttf", 16)
-    except:
-        font_titulo = ImageFont.load_default()
-        font_sub = ImageFont.load_default()
-        font_small = ImageFont.load_default()
+    except Exception as e:
+        print("Error font_small:", e)
 
     # =========================
     # TEXTO HEADER
     # =========================
     texto_header = "Inspección Preoperacional"
 
-    bbox = draw.textbbox((0,0), texto_header, font=font_title)
+    try:
+        bbox = draw.textbbox((0,0), texto_header, font=font_title)
+    except:
+        bbox = draw.textsize(texto_header, font=font_title)
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
 
