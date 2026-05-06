@@ -44,6 +44,8 @@ def generar_qr_etiqueta(maquina, base_url):
     # =========================
     # CARGAR LOGO
     # =========================
+    logo_x = 10
+    fondo_w = 0
     try:
         ruta_logo = os.path.join(os.path.dirname(__file__), "logo_CIACA.png")
 
@@ -54,7 +56,6 @@ def generar_qr_etiqueta(maquina, base_url):
         max_height = 60
         logo.thumbnail((max_width, max_height), Image.LANCZOS)
 
-        logo_x = 10
         logo_w, logo_h = logo.size
         logo_y = (header_h - logo_h) // 2
 
