@@ -120,10 +120,10 @@ def generar_qr_etiqueta(maquina, base_url):
 
     try:
         bbox = draw.textbbox((0,0), texto_header, font=font_title)
-    except:
-        bbox = draw.textsize(texto_header, font=font_title)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+    except Exception:
+        text_w, text_h = draw.textsize(texto_header, font=font_title)
 
     text_x = logo_x + fondo_w + 20
     text_y = (header_h - text_h) // 2
