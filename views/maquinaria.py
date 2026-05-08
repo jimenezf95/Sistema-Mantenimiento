@@ -101,6 +101,77 @@ def vista_registro_maquinaria():
     st.subheader("Maquinaria registrada")
 
     maquinas = obtener_maquinas()
+    
+    def reset_pagina_maquinas():
+        st.session_state.pagina_maquinas = 1
+    # =========================
+    # FILTROS
+    # =========================
+
+    sedes = obtener_sedes()
+
+    filtro_sede = st.selectbox(
+        "Filtrar por sede",
+        ["Todas"] + [s[1] for s in sedes],
+        key="filtro_sede_registro",
+        on_change=reset_pagina_maquinas
+    )
+
+    filtro_tipo = st.selectbox(
+        "Filtrar por tipo de máquina",
+        ["Todos"] + TIPOS_MAQUINA,
+        key="filtro_tipo_registro",
+        on_change=reset_pagina_maquinas
+    )
+    
+    maquinas_filtradas = []
+
+    for m in maquinas:
+        sede = m[7]
+        tipo = m[2]
+
+        if filtro_sede != "Todas" and sede != filtro_sede:
+            continue
+
+        if filtro_tipo != "Todos" and tipo != filtro_tipo:
+            continue
+
+        maquinas_filtradas.append(m)
+        
+    # =========================
+    # PAGINACIÓN
+    # =========================
+
+    total = len(maquinas_filtradas)
+    por_pagina = 10
+
+    if "pagina_maquinas" not in st.session_state:
+        st.session_state.pagina_maquinas = 1
+
+    total_paginas = max(1, (total + por_pagina - 1) // por_pagina)
+
+    col_prev, col_info, col_next = st.columns([1,2,1])
+
+    with col_prev:
+        if st.button("⬅️", disabled=st.session_state.pagina_maquinas <= 1):
+            st.session_state.pagina_maquinas -= 1
+            st.rerun()
+
+    with col_next:
+        if st.button("➡️", disabled=st.session_state.pagina_maquinas >= total_paginas):
+            st.session_state.pagina_maquinas += 1
+            st.rerun()
+
+    inicio = (st.session_state.pagina_maquinas - 1) * por_pagina
+    fin = inicio + por_pagina
+
+    maquinas_pagina = maquinas_filtradas[inicio:fin]
+
+    with col_info:
+        st.markdown(
+            f"<div style='text-align:center'>Mostrando {len(maquinas_pagina)} de {total} resultados</div>",
+            unsafe_allow_html=True
+        )
 
     # Encabezados de la tabla
     col1, col2, col3, col4, col5, col6, col7, col8, col9, col10 = st.columns([1.5, 2, 1, 2, 1.5, 2, 1.5, 1.5, 1.5, 2]) #Ajustar ancho de columnas
@@ -117,7 +188,7 @@ def vista_registro_maquinaria():
     col10.write("")
 
     # Tabla de máquinas
-    for maquina in maquinas:
+    for maquina in maquinas_pagina:
         col1, col2, col3, col4, col5, col6, col7, col8, col9, col10 = st.columns([1.5, 2, 1, 2, 1.5, 2, 1.5, 1.5, 1.5, 2]) #Ajustar ancho de columnas
         #col1.write(maquina[0]) #Id interno
         col1.write(maquina[1]) #ID Activo Fijo
@@ -320,7 +391,7 @@ def vista_inventario_maquinas():
     maquinas = obtener_maquinas()
     
     #DEBUG
-    st.write(maquinas[0])
+    #st.write(maquinas[0])
     
     ################
     #----------------
