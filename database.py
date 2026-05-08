@@ -415,7 +415,7 @@ def insertar_maquina(tipo, activo_fijo, numero_equipo, modelo, fabricante, estad
         
         cursor.execute("""
         INSERT INTO maquinas 
-        (tipo, activo_fijo, numero_equipo, modelo, fabricante, estado_operacion, sede_id)
+        (tipo, activo_fijo, numero_equipo, area, material, estado_operacion, sede_id)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING id
         """, (tipo, activo_fijo, numero_equipo, modelo, fabricante, estado_operacion, sede_id))
@@ -447,8 +447,8 @@ def obtener_maquinas():
             maquinas.activo_fijo,
             maquinas.tipo,
             maquinas.numero_equipo,
-            maquinas.modelo,
-            maquinas.fabricante,
+            maquinas.area,
+            maquinas.material,
             maquinas.estado_operacion,
             sedes.nombre,
             sedes.ciudad
@@ -480,8 +480,8 @@ def obtener_maquina_por_id(maquina_id):
             maquinas.id,
             maquinas.tipo,
             maquinas.numero_equipo,
-            maquinas.modelo,
-            maquinas.fabricante,
+            maquinas.area,
+            maquinas.material,
             maquinas.estado_operacion,
             maquinas.sede_id,
             sedes.nombre,
@@ -532,7 +532,7 @@ def actualizar_maquina(id, tipo, activo_fijo, numero_equipo, modelo, fabricante,
 
         cursor.execute("""
         UPDATE maquinas
-        SET tipo = %s, activo_fijo = %s, numero_equipo = %s, modelo = %s, fabricante = %s, estado_operacion = %s, sede_id = %s
+        SET tipo = %s, activo_fijo = %s, numero_equipo = %s, area = %s, material = %s, estado_operacion = %s, sede_id = %s
         WHERE id = %s
         """, (tipo, activo_fijo, numero_equipo, modelo, fabricante, estado_operacion, sede_id, id))
 

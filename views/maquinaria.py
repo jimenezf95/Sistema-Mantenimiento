@@ -62,8 +62,8 @@ def vista_registro_maquinaria():
         tipo = st.selectbox("Tipo de máquina",TIPOS_MAQUINA)
         activo_fijo = st.text_input("ID Activo Fijo (Contable)")
         numero_equipo = st.text_input("Número de equipo")
-        modelo = st.text_input("Modelo")
-        fabricante = st.text_input("Fabricante")
+        modelo = st.text_input("Área")
+        fabricante = st.text_input("Material")
 
         estado_operacion = st.selectbox(
             "Estado de operación",
@@ -108,8 +108,8 @@ def vista_registro_maquinaria():
     col1.write("ID Activo")
     col2.write("Tipo")
     col3.write("Equipo")
-    col4.write("Modelo")
-    col5.write("Fabricante")
+    col4.write("Área")
+    col5.write("Material")
     col6.write("Estado")
     col7.write("Sede")
     col8.write("Ciudad")
@@ -427,8 +427,8 @@ def vista_inventario_maquinas():
     col1.write("ID Activo")
     col2.write("Tipo")
     col3.write("Equipo")
-    col4.write("Modelo")
-    col5.write("Fabricante")
+    col4.write("Área")
+    col5.write("Material")
     col6.write("Estado")
     col7.write("Sede")
     col8.write("Ciudad")

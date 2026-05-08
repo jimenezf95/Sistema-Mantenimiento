@@ -141,8 +141,13 @@ def vista_hoja_vida():
     #col2.metric("Fallas", indicadores["fallas"])
     col2.metric("Mantenimientos Realizados", indicadores["mantenimientos"])
 
+    ultimo_mant = indicadores["ultimo_mantenimiento"]
+    if ultimo_mant:
+        ultimo_mant = ultimo_mant.strftime("%Y-%m-%d")
+    else:
+        ultimo_mant = "Sin datos"
     # Mantenimientos
-    col3.metric("Último mantenimiento", indicadores["ultimo_mantenimiento"])
+    col3.metric("Último mantenimiento", ultimo_mant)
     
     costo_total = obtener_costo_total_maquina(maquina_id)
     costo_formateado = f"{costo_total:,.0f}".replace(",", ".")
