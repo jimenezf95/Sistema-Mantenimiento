@@ -76,35 +76,42 @@ def generar_qr_etiqueta(maquina, base_url):
         print("Error cargando logooooo:", e)
 
     # =========================
-    # FUENTES (SEGURO)
+    # FUENTES (PRODUCCIÓN SEGURA)
     # =========================
 
-    # 🔥 SIEMPRE inicializar
+    # rutas absolutas (clave para producción)
+    ruta_base = os.path.dirname(__file__)
+
+    font_regular_path = os.path.join(ruta_base, "fonts", "Roboto-Regular.ttf")
+    font_bold_path = os.path.join(ruta_base, "fonts", "Roboto-Bold.ttf")
+
+    # fallback
     font_title = ImageFont.load_default()
     font_titulo = ImageFont.load_default()
     font_sub = ImageFont.load_default()
     font_small = ImageFont.load_default()
 
-    # 🔥 intentar cargar fuentes reales
+    # cargar fuentes
     try:
-        font_title = ImageFont.truetype("arialbd.ttf", 22)
+        font_title = ImageFont.truetype(font_bold_path, 22)
     except Exception as e:
         print("Error font_title:", e)
 
     try:
-        font_titulo = ImageFont.truetype("arial.ttf", 30)
+        font_titulo = ImageFont.truetype(font_bold_path, 30)
     except Exception as e:
         print("Error font_titulo:", e)
 
     try:
-        font_sub = ImageFont.truetype("arial.ttf", 18)
+        font_sub = ImageFont.truetype(font_regular_path, 18)
     except Exception as e:
         print("Error font_sub:", e)
 
     try:
-        font_small = ImageFont.truetype("arial.ttf", 16)
+        font_small = ImageFont.truetype(font_regular_path, 16)
     except Exception as e:
         print("Error font_small:", e)
+
 
     # =========================
     # TEXTO HEADER
