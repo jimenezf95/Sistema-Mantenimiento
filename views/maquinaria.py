@@ -319,6 +319,9 @@ def vista_inventario_maquinas():
     st.header("Inventario de Máquinas")
     maquinas = obtener_maquinas()
     
+    #DEBUG
+    st.write(maquinas[0])
+    
     ################
     #----------------
     # CAMBIAR URL
